@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -28,14 +29,7 @@ public class Order {
     private OrderStatus status;
     @Column(nullable = false)
     private LocalDateTime creationDate;
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "order_id")
     private List<OrderItem> orderItems;
-
-    enum OrderStatus {
-        NEW,
-        PROCESSING,
-        DELIVERED,
-        CANCELLED,
-        PAYMENT_FAILED
-    }
 }
