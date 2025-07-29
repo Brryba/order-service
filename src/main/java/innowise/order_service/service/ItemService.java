@@ -32,9 +32,44 @@ public class ItemService {
     }
 
     public ItemResponseDto getItemById(Long id) {
-        Item item = itemRepository.findById(id).orElseThrow(() ->
-                new ItemNotFoundException("Item with id " + id + " not found"));
+        Item item = loadItemFromDatabase(id);
+
         return itemMapper.toItemResponseDto(item);
+    }
+
+    @Transactional
+    public ItemResponseDto updateItem(ItemRequestDto itemRequestDto, long id) {
+        Item item = loadItemFromDatabase(id);
+
+        if (!item.getName().equals(itemRequestDto.getName())) {
+            validateItemNameUnique(itemRequestDto.getName());
+        }
+
+        itemMapper.updateItem(item, itemRequestDto);
+
+        log.info("Item {} updated", item.getId());
+
+        return itemMapper.toItemResponseDto(item);
+    }
+
+    @Transactional
+    public void deleteItem(Long id) {
+        Item item = loadItemFromDatabase(id);
+
+        itemRepository.delete(item);
+
+        log.info("Item {} deleted", item.getId());
+    }
+
+    Item loadItemFromDatabase(long id) {
+        Item item = itemRepository.findById(id).orElseThrow(() -> {
+            log.warn("Item with id {} not found", id);
+            return new ItemNotFoundException("Item with id " + id + " not found");
+        });
+
+        log.info("Item {} loaded from database", item.getId());
+
+        return item;
     }
 
     void validateItemNameUnique(String itemName) throws DuplicateItemNameException {
