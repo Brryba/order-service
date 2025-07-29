@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: 3
+      author: Yury Brazgunou
+      changes:
+        - createTable:
+            tableName: order_items
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: order_id
+                  type: bigserial
+                  constraints:
+                    foreignKeyName: order_fk
+                    references: orders(id)
+                    nullable: false
+              - column:
+                  name: item_id
+                  type: bigserial
+                  constraints:
+                    foreignKeyName: item_fk
+                    references: items(id)
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: int4
+                  constraints:
+                    nullable: false
+                    checkConstraint: 'quantity > 0'
+        - createIndex:
+            indexName: order_id_index
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            indexName: item_id_index
+            tableName: order_items
+            columns:
+              - column:
+                  name: item_id
