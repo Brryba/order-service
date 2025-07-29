@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: Yury Brazgunou
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: bigserial
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: text
+                  defaultValue: 'NEW'
+                  constraints:
+                    nullable: false
+                    checkConstraint: "status IN ('NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED', 'PAYMENT_FAILED')"
+              - column:
+                  name: creation_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: status_index
+            tableName: orders
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            indexName: user_index
+            tableName: orders
+            columns:
+              - column:
+                  name: user_id
