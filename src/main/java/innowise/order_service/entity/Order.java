@@ -1,5 +1,6 @@
 package innowise.order_service.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,7 +28,7 @@ public class Order {
     private OrderStatus status;
     @Column(nullable = false)
     private LocalDateTime creationDate;
-    @OneToMany(mappedBy = "order")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems;
 
     enum OrderStatus {
@@ -35,5 +36,6 @@ public class Order {
         PROCESSING,
         DELIVERED,
         CANCELLED,
-        PAYMENT_FAILED}
+        PAYMENT_FAILED
+    }
 }
