@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 4
+      author: Yury Brazgunou
+      context: dev, test
+      changes:
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                 name: name
+                 value: "Water"
+              - column:
+                  name: price
+                  value: "1.25"
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: name
+                  value: "Milk"
+              - column:
+                  name: price
+                  value: "2.05"
