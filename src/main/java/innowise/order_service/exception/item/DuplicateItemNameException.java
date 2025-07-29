@@ -1,9 +1,9 @@
 package innowise.order_service.exception.item;
 
+import innowise.order_service.exception.StatusCodeException;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
-public class DuplicateItemNameException extends ResponseStatusException {
+public class DuplicateItemNameException extends StatusCodeException {
     public DuplicateItemNameException(String message) {
         super(HttpStatus.CONFLICT, message);
     }

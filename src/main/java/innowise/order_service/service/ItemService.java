@@ -4,6 +4,7 @@ import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.exception.item.DuplicateItemNameException;
+import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.mapper.ItemMapper;
 import innowise.order_service.repository.ItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,12 @@ public class ItemService {
 
         log.info("Item {} created", item.getName());
 
+        return itemMapper.toItemResponseDto(item);
+    }
+
+    public ItemResponseDto getItemById(Long id) {
+        Item item = itemRepository.findById(id).orElseThrow(() ->
+                new ItemNotFoundException("Item with id " + id + " not found"));
         return itemMapper.toItemResponseDto(item);
     }
 
