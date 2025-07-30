@@ -1,6 +1,5 @@
 package innowise.order_service.mapper;
 
-import innowise.order_service.dto.order.OrderRequestDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.order_items.OrderItemResponseDto;
 import innowise.order_service.entity.OrderItem;
@@ -14,6 +13,7 @@ import static org.mapstruct.ReportingPolicy.ERROR;
 public interface OrderItemsMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "item", ignore = true)
+    @Mapping(target = "order", ignore = true)
     OrderItem toOrderItem(OrderItemRequestDto orderItemRequestDto);
 
     @Mapping(target = "itemId", source = "item.id")

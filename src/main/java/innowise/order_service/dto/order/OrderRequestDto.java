@@ -19,6 +19,7 @@ public class OrderRequestDto {
     @NotNull(message = "Order status cannot be null")
     private OrderStatus status;
 
+    @NotNull(message = "Order must contain items")
     @NotEmpty(message = "Order items list cannot be empty")
     @Valid
     private List<OrderItemRequestDto> orderItems;

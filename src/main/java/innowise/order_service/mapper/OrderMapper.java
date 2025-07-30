@@ -12,8 +12,8 @@ import static org.mapstruct.ReportingPolicy.ERROR;
 @Mapper(componentModel = SPRING, unmappedTargetPolicy = ERROR, uses = {OrderItemsMapper.class})
 public interface OrderMapper {
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "orderItems", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
+    @Mapping(target = "orderItems", ignore = true)
     Order toOrder(OrderRequestDto orderRequestDto);
 
     OrderResponseDto toOrderResponseDto(Order order);
