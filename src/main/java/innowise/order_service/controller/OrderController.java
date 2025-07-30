@@ -44,7 +44,7 @@ public class OrderController {
 
     @GetMapping("/status/{status}")
     @ResponseStatus(HttpStatus.OK)
-    public List<OrderResponseDto> getOrdersByStatus(@PathVariable OrderStatus status) {
+    public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status) {
         return orderService.getOrdersByStatus(status);
     }
 }

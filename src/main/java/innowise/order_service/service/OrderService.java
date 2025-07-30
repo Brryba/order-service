@@ -8,6 +8,7 @@ import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderItem;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
+import innowise.order_service.exception.order.IllegalOrderStatusException;
 import innowise.order_service.exception.order.OrderNotFoundException;
 import innowise.order_service.mapper.OrderItemsMapper;
 import innowise.order_service.mapper.OrderMapper;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -72,8 +74,16 @@ public class OrderService {
         return orders.stream().map(orderMapper::toOrderResponseDto).collect(Collectors.toList());
     }
 
-    public List<OrderResponseDto> getOrdersByStatus(OrderStatus status) {
-        List<Order> orders = orderRepository.findOrdersByStatus(status);
+    public List<OrderResponseDto> getOrdersByStatus(String status) {
+        OrderStatus orderStatus;
+        try {
+            orderStatus = OrderStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalOrderStatusException("Illegal order status " + status +
+                    ".\n Valid values are: " + Arrays.toString(OrderStatus.values()));
+        }
+
+        List<Order> orders = orderRepository.findOrdersByStatus(orderStatus);
 
         if (orders == null || orders.isEmpty()) {
             log.warn("Orders with status {} were not found in database", status);
