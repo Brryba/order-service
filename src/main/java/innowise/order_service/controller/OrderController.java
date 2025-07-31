@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,37 +31,45 @@ public class OrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public OrderResponseDto addOrder(@Valid @RequestBody OrderCreateDto orderRequestDto) {
-        return orderService.addOrder(orderRequestDto);
+    public OrderResponseDto addOrder(@Valid @RequestBody OrderCreateDto orderRequestDto,
+                                     @AuthenticationPrincipal Long userId) {
+        return orderService.addOrder(orderRequestDto, userId);
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public OrderResponseDto getOrder(@PathVariable long id, @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
-        return orderService.getOrderById(id, token);
+    public OrderResponseDto getOrder(@PathVariable long id,
+                                     @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
+                                     @AuthenticationPrincipal Long userId) {
+        return orderService.getOrderById(id, token, userId);
     }
 
     @GetMapping()
     @ResponseStatus(HttpStatus.OK)
-    public List<OrderResponseDto> getOrdersByIds(@RequestParam List<Long> ids) {
-        return orderService.getOrdersByIds(ids);
+    public List<OrderResponseDto> getOrdersByIds(@RequestParam List<Long> ids,
+                                                 @AuthenticationPrincipal Long userId) {
+        return orderService.getOrdersByIds(ids, userId);
     }
 
     @GetMapping("/status/{status}")
     @ResponseStatus(HttpStatus.OK)
-    public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status) {
-        return orderService.getOrdersByStatus(status);
+    public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status,
+                                                    @AuthenticationPrincipal Long userId) {
+        return orderService.getOrdersByStatus(status, userId);
     }
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public OrderResponseDto updateOrder(@PathVariable long id, @RequestBody @Valid OrderUpdateDto orderUpdateDto) {
-        return orderService.updateOrder(id, orderUpdateDto);
+    public OrderResponseDto updateOrder(@PathVariable long id,
+                                        @RequestBody @Valid OrderUpdateDto orderUpdateDto,
+                                        @AuthenticationPrincipal Long userId) {
+        return orderService.updateOrder(id, orderUpdateDto, userId);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteOrder(@PathVariable long id) {
-        orderService.deleteOrder(id);
+    public void deleteOrder(@PathVariable long id,
+                            @AuthenticationPrincipal Long userId) {
+        orderService.deleteOrder(id, userId);
     }
 }

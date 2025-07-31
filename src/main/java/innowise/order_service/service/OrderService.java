@@ -11,6 +11,7 @@ import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.exception.order.IllegalOrderStatusException;
 import innowise.order_service.exception.order.OrderNotFoundException;
+import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.mapper.OrderItemsMapper;
 import innowise.order_service.mapper.OrderMapper;
 import innowise.order_service.repository.ItemRepository;
@@ -40,11 +41,11 @@ public class OrderService {
     private final UserServiceClient userServiceClient;
 
     @Transactional
-    public OrderResponseDto addOrder(OrderCreateDto orderRequestDto) {
-        Order order = orderMapper.toOrder(orderRequestDto);
+    public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, Long userId) {
+        Order order = orderMapper.toOrder(orderCreateDto);
+        order.setUserId(userId);
+        setOrderItems(order, orderCreateDto.getOrderItems());
         order.setCreationDate(LocalDateTime.now());
-
-        setOrderItems(order, orderRequestDto.getOrderItems());
 
         order = orderRepository.save(order);
         log.info("Order {} created", order.getId());
@@ -52,23 +53,21 @@ public class OrderService {
         return orderMapper.toOrderResponseDto(order);
     }
 
-    public OrderResponseDto getOrderById(Long orderId, String token) {
+    public OrderResponseDto getOrderById(Long orderId, String token, Long userId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order {} not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
         });
 
         log.info("Order {} loaded", orderId);
+        validateOrderOwner(order, userId);
 
-
-
-        //TODO: make mapper set user
         OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
         orderResponseDto.setUser(userServiceClient.getUserById(order.getUserId(), token));
         return orderResponseDto;
     }
 
-    public List<OrderResponseDto> getOrdersByIds(List<Long> ids) {
+    public List<OrderResponseDto> getOrdersByIds(List<Long> ids, Long userId) {
         List<Order> orders = orderRepository.findOrdersByIdIn(ids);
 
         if (orders == null || orders.isEmpty()) {
@@ -77,11 +76,14 @@ public class OrderService {
         }
 
         log.info("{} Orders loaded from database", orders.size());
+        for (Order order : orders) {
+            validateOrderOwner(order, userId);
+        }
 
         return orders.stream().map(orderMapper::toOrderResponseDto).collect(Collectors.toList());
     }
 
-    public List<OrderResponseDto> getOrdersByStatus(String status) {
+    public List<OrderResponseDto> getOrdersByStatus(String status, Long userId) {
         OrderStatus orderStatus;
         try {
             orderStatus = OrderStatus.valueOf(status.toUpperCase());
@@ -90,7 +92,7 @@ public class OrderService {
                     ".\n Valid values are: " + Arrays.toString(OrderStatus.values()));
         }
 
-        List<Order> orders = orderRepository.findOrdersByStatus(orderStatus);
+        List<Order> orders = orderRepository.findOrdersByStatusAndUserId(orderStatus, userId);
 
         if (orders == null || orders.isEmpty()) {
             log.warn("Orders with status {} were not found in database", status);
@@ -103,13 +105,14 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto) {
+    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto, Long userId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order with {} id was not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
         });
 
         log.info("Order {} loaded from database", orderId);
+        validateOrderOwner(order, userId);
 
         orderMapper.updateOrder(order, orderUpdateDto);
 
@@ -121,13 +124,21 @@ public class OrderService {
     }
 
     @Transactional
-    public void deleteOrder(long orderId) {
-        if (orderRepository.existsById(orderId)) {
-            orderRepository.deleteById(orderId);
-            log.info("Order {} deleted", orderId);
-        } else {
-            log.warn("Order with id {} was not found in database", orderId);
-            throw new OrderNotFoundException("Order with id " + orderId + " was not found");
+    public void deleteOrder(long orderId, Long userId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+            log.warn("Order with {} id is not in the database", orderId);
+            return new OrderNotFoundException("Order with id " + orderId + " was not found");
+        });
+        validateOrderOwner(order, userId);
+
+        orderRepository.delete(order);
+        log.info("Order {} deleted", orderId);
+    }
+
+    private void validateOrderOwner(Order order, Long userId) throws OrderAccessDeniedException {
+        if (order.getUserId() != userId) {
+            log.warn("User {} can not see the order {}", userId, order.getId());
+            throw new OrderAccessDeniedException("You are only allowed to access your own orders");
         }
     }
 

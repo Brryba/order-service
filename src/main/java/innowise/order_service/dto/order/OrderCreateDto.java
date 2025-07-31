@@ -16,9 +16,6 @@ public class OrderCreateDto {
     @NotNull(message = "Order status cannot be null")
     private OrderStatus status;
 
-    @NotNull(message = "User ID cannot be null")
-    private Long userId;
-
     @Valid
     @NotNull(message = "Order must contain some items")
     @NotEmpty(message = "Order items can't be empty")
