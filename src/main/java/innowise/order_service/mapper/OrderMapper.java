@@ -23,5 +23,6 @@ public interface OrderMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "orderItems", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     void updateOrder(@MappingTarget Order order, OrderUpdateDto orderUpdateDto);
 }

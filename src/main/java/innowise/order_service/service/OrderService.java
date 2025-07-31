@@ -96,6 +96,7 @@ public class OrderService {
         return orders.stream().map(orderMapper::toOrderResponseDto).collect(Collectors.toList());
     }
 
+    @Transactional
     public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order with {} id was not found in database", orderId);
@@ -113,6 +114,7 @@ public class OrderService {
         return orderMapper.toOrderResponseDto(order);
     }
 
+    @Transactional
     public void deleteOrder(long orderId) {
         if (orderRepository.existsById(orderId)) {
             orderRepository.deleteById(orderId);

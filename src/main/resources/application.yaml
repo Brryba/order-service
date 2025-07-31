@@ -16,3 +16,4 @@ spring:
         batch_versioned_data: true
         order_inserts: true
         order_updates: true
+        order_deletes: true

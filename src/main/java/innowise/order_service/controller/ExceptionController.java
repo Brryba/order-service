@@ -32,6 +32,7 @@ public class ExceptionController {
                 .validationErrors(errors)
                 .message("Validation Error")
                 .path(request.getRequestURI())
+                .requestType(request.getMethod())
                 .build();
 
         return new ResponseEntity<>(validationError, HttpStatus.BAD_REQUEST);
@@ -45,6 +46,7 @@ public class ExceptionController {
                 .error(ex.getHttpStatus().value() + " " + ex.getHttpStatus().getReasonPhrase())
                 .message(ex.getMessage())
                 .path(request.getRequestURI())
+                .requestType(request.getMethod())
                 .build();
 
         return new ResponseEntity<>(errorDto, HttpStatus.valueOf(ex.getHttpStatus().value()));
