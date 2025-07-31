@@ -18,6 +18,7 @@ public interface OrderMapper {
     @Mapping(target = "orderItems", ignore = true)
     Order toOrder(OrderCreateDto orderUpdateRequestDto);
 
+    @Mapping(target = "user", ignore = true)
     OrderResponseDto toOrderResponseDto(Order order);
 
     @Mapping(target = "id", ignore = true)
