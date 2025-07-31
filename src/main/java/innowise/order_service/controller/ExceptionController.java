@@ -21,7 +21,7 @@ public class ExceptionController {
     public ResponseEntity<ValidationErrorDto> handleValidationExceptions(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<String> errors = new ArrayList<>();
-        for(ObjectError error : ex.getBindingResult().getAllErrors()) {
+        for (ObjectError error : ex.getBindingResult().getAllErrors()) {
             errors.add(error.getDefaultMessage());
         }
 

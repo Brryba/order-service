@@ -1,8 +1,8 @@
 package innowise.order_service.controller;
 
-import innowise.order_service.dto.order.OrderRequestDto;
+import innowise.order_service.dto.order.OrderCreateDto;
+import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
-import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,7 +27,7 @@ public class OrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public OrderResponseDto addOrder(@Valid @RequestBody OrderRequestDto orderRequestDto) {
+    public OrderResponseDto addOrder(@Valid @RequestBody OrderCreateDto orderRequestDto) {
         return orderService.addOrder(orderRequestDto);
     }
 
@@ -46,5 +47,11 @@ public class OrderController {
     @ResponseStatus(HttpStatus.OK)
     public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status) {
         return orderService.getOrdersByStatus(status);
+    }
+
+    @PutMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public OrderResponseDto updateOrder(@PathVariable long id, @RequestBody OrderUpdateDto orderUpdateDto) {
+        return orderService.updateOrder(id, orderUpdateDto);
     }
 }

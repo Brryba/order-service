@@ -10,17 +10,17 @@ import lombok.Setter;
 
 import java.util.List;
 
-@Setter
 @Getter
-public class OrderRequestDto {
-    @NotNull(message = "User ID cannot be null")
-    private Long userId;
-
+@Setter
+public class OrderCreateDto {
     @NotNull(message = "Order status cannot be null")
     private OrderStatus status;
 
-    @NotNull(message = "Order must contain items")
-    @NotEmpty(message = "Order items list cannot be empty")
+    @NotNull(message = "User ID cannot be null")
+    private Long userId;
+
     @Valid
+    @NotNull(message = "Order must contain some items")
+    @NotEmpty(message = "Order items can't be empty")
     private List<OrderItemRequestDto> orderItems;
 }

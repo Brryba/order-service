@@ -1,7 +1,8 @@
 package innowise.order_service.service;
 
-import innowise.order_service.dto.order.OrderRequestDto;
+import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
+import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.entity.Order;
@@ -38,7 +39,7 @@ public class OrderService {
     private final OrderItemsMapper orderItemsMapper;
 
     @Transactional
-    public OrderResponseDto addOrder(OrderRequestDto orderRequestDto) {
+    public OrderResponseDto addOrder(OrderCreateDto orderRequestDto) {
         Order order = orderMapper.toOrder(orderRequestDto);
         order.setCreationDate(LocalDateTime.now());
 
@@ -95,6 +96,23 @@ public class OrderService {
         return orders.stream().map(orderMapper::toOrderResponseDto).collect(Collectors.toList());
     }
 
+    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+            log.warn("Order with {} id was not found in database", orderId);
+            return new OrderNotFoundException("Order with id " + orderId + " was not found");
+        });
+
+        log.info("Order {} loaded from database", orderId);
+
+        orderMapper.updateOrder(order, orderUpdateDto);
+
+        order = orderRepository.save(order);
+
+        log.info("Order {} updated", orderId);
+
+        return orderMapper.toOrderResponseDto(order);
+    }
+
     private void setOrderItems(Order order, List<OrderItemRequestDto> orderItemDtos) {
         List<Long> itemIds = orderItemDtos
                 .stream()
@@ -108,7 +126,7 @@ public class OrderService {
         if (items.size() < orderItemDtos.size()) {
             log.warn("Some requested items were not found. Expected: {} items, Found: {}",
                     itemIds.size(), items.size());
-            throw new ItemNotFoundException("Some requested items were not found. Expected:" +
+            throw new ItemNotFoundException("Some items in order were not found. Expected:" +
                     itemIds.size() + " items, Found: " + items.size());
         }
 

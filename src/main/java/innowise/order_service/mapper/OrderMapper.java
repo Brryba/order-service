@@ -1,10 +1,12 @@
 package innowise.order_service.mapper;
 
-import innowise.order_service.dto.order.OrderRequestDto;
+import innowise.order_service.dto.order.OrderCreateDto;
+import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.entity.Order;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import static org.mapstruct.ReportingPolicy.ERROR;
@@ -14,7 +16,12 @@ public interface OrderMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "orderItems", ignore = true)
-    Order toOrder(OrderRequestDto orderRequestDto);
+    Order toOrder(OrderCreateDto orderUpdateRequestDto);
 
     OrderResponseDto toOrderResponseDto(Order order);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "creationDate", ignore = true)
+    @Mapping(target = "orderItems", ignore = true)
+    void updateOrder(@MappingTarget Order order, OrderUpdateDto orderUpdateDto);
 }
