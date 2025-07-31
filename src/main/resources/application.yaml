@@ -17,3 +17,7 @@ spring:
         order_inserts: true
         order_updates: true
         order_deletes: true
+
+microservices:
+  url:
+    user_service: ${USER_SERVICE_URL}

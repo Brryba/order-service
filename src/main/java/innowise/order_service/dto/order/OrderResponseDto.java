@@ -1,6 +1,7 @@
 package innowise.order_service.dto.order;
 
 import innowise.order_service.dto.order_items.OrderItemResponseDto;
+import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.OrderStatus;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,4 +21,6 @@ public class OrderResponseDto {
     private LocalDateTime creationDate;
 
     private List<OrderItemResponseDto> orderItems;
+
+    private UserResponseDto user;
 }

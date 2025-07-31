@@ -37,6 +37,7 @@ public class OrderService {
     private final ItemRepository itemRepository;
     private final OrderMapper orderMapper;
     private final OrderItemsMapper orderItemsMapper;
+    private final UserServiceClient userServiceClient;
 
     @Transactional
     public OrderResponseDto addOrder(OrderCreateDto orderRequestDto) {
@@ -51,7 +52,7 @@ public class OrderService {
         return orderMapper.toOrderResponseDto(order);
     }
 
-    public OrderResponseDto getOrderById(Long orderId) {
+    public OrderResponseDto getOrderById(Long orderId, String token) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order {} not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
@@ -59,7 +60,12 @@ public class OrderService {
 
         log.info("Order {} loaded", orderId);
 
-        return orderMapper.toOrderResponseDto(order);
+
+
+        //TODO: make mapper set user
+        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
+        orderResponseDto.setUser(userServiceClient.getUserById(order.getUserId(), token));
+        return orderResponseDto;
     }
 
     public List<OrderResponseDto> getOrdersByIds(List<Long> ids) {

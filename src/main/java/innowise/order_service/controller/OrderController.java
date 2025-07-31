@@ -6,6 +6,7 @@ import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -34,8 +36,8 @@ public class OrderController {
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public OrderResponseDto getOrder(@PathVariable long id) {
-        return orderService.getOrderById(id);
+    public OrderResponseDto getOrder(@PathVariable long id, @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+        return orderService.getOrderById(id, token);
     }
 
     @GetMapping()
