@@ -7,6 +7,7 @@ import innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,7 +52,13 @@ public class OrderController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public OrderResponseDto updateOrder(@PathVariable long id, @RequestBody OrderUpdateDto orderUpdateDto) {
+    public OrderResponseDto updateOrder(@PathVariable long id, @RequestBody @Valid OrderUpdateDto orderUpdateDto) {
         return orderService.updateOrder(id, orderUpdateDto);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOrder(@PathVariable long id) {
+        orderService.deleteOrder(id);
     }
 }

@@ -113,6 +113,16 @@ public class OrderService {
         return orderMapper.toOrderResponseDto(order);
     }
 
+    public void deleteOrder(long orderId) {
+        if (orderRepository.existsById(orderId)) {
+            orderRepository.deleteById(orderId);
+            log.info("Order {} deleted", orderId);
+        } else {
+            log.warn("Order with id {} was not found in database", orderId);
+            throw new OrderNotFoundException("Order with id " + orderId + " was not found");
+        }
+    }
+
     private void setOrderItems(Order order, List<OrderItemRequestDto> orderItemDtos) {
         List<Long> itemIds = orderItemDtos
                 .stream()
