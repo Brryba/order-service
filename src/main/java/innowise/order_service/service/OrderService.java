@@ -4,6 +4,7 @@ import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
+import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderItem;
@@ -19,6 +20,7 @@ import innowise.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,9 +52,7 @@ public class OrderService {
         order = orderRepository.save(order);
         log.info("Order {} created", order.getId());
 
-        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
-        orderResponseDto.setUser(userServiceClient.getUserById(userId, token));
-        return orderResponseDto;
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId, token));
     }
 
     public OrderResponseDto getOrderById(Long orderId, String token, Long userId) {
@@ -64,9 +64,7 @@ public class OrderService {
         log.info("Order {} loaded", orderId);
         validateOrderOwner(order, userId);
 
-        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
-        orderResponseDto.setUser(userServiceClient.getUserById(userId, token));
-        return orderResponseDto;
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId, token));
     }
 
     public List<OrderResponseDto> getOrdersByIds(List<Long> ids, String token, Long userId) {
@@ -82,10 +80,9 @@ public class OrderService {
             validateOrderOwner(order, userId);
         }
 
+        UserResponseDto userResponseDto = userServiceClient.getUserById(userId, token);
         return orders.stream()
-                .map(orderMapper::toOrderResponseDto)
-                .peek(orderResponseDto ->
-                        orderResponseDto.setUser(userServiceClient.getUserById(userId, token)))
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
                 .collect(Collectors.toList());
     }
 
@@ -107,10 +104,9 @@ public class OrderService {
 
         log.info("{} Orders with {} status loaded from database", orders.size(), status);
 
+        UserResponseDto userResponseDto = userServiceClient.getUserById(userId, token);
         return orders.stream()
-                .map(orderMapper::toOrderResponseDto)
-                .peek(orderResponseDto ->
-                        orderResponseDto.setUser(userServiceClient.getUserById(userId, token)))
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
                 .collect(Collectors.toList());
     }
 
@@ -130,9 +126,7 @@ public class OrderService {
 
         log.info("Order {} updated", orderId);
 
-        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
-        orderResponseDto.setUser(userServiceClient.getUserById(userId, token));
-        return orderResponseDto;
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId, token));
     }
 
     @Transactional

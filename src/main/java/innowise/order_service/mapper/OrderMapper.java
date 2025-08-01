@@ -3,6 +3,7 @@ package innowise.order_service.mapper;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
+import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Order;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -19,8 +20,9 @@ public interface OrderMapper {
     @Mapping(target = "userId", ignore = true)
     Order toOrder(OrderCreateDto orderCreateDto);
 
-    @Mapping(target = "user", ignore = true)
-    OrderResponseDto toOrderResponseDto(Order order);
+    @Mapping(target = "user", source = "userResponseDto")
+    @Mapping(target = "id", source = "order.id")
+    OrderResponseDto toOrderResponseDto(Order order, UserResponseDto userResponseDto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "creationDate", ignore = true)

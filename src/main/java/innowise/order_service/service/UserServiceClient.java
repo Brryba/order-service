@@ -44,14 +44,16 @@ public class UserServiceClient {
                     UserResponseDto.class
             );
             userResponseDto = response.getBody();
+
+            log.info("Received response from user service");
         } catch (RestClientException e) {
             userResponseDto = UserResponseDto.builder()
                     .id(userId)
                     .name("Unable to get user info. Try again later.")
                     .build();
-        }
 
-        log.info("Received response from user service: {}", userResponseDto);
+            log.warn("Unable to get response form user service.", e);
+        }
 
         return userResponseDto;
     }
