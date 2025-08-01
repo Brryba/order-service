@@ -41,7 +41,7 @@ public class OrderService {
     private final UserServiceClient userServiceClient;
 
     @Transactional
-    public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, Long userId) {
+    public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, String token, Long userId) {
         Order order = orderMapper.toOrder(orderCreateDto);
         order.setUserId(userId);
         setOrderItems(order, orderCreateDto.getOrderItems());
@@ -50,7 +50,9 @@ public class OrderService {
         order = orderRepository.save(order);
         log.info("Order {} created", order.getId());
 
-        return orderMapper.toOrderResponseDto(order);
+        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
+        orderResponseDto.setUser(userServiceClient.getUserById(userId, token));
+        return orderResponseDto;
     }
 
     public OrderResponseDto getOrderById(Long orderId, String token, Long userId) {
@@ -63,11 +65,11 @@ public class OrderService {
         validateOrderOwner(order, userId);
 
         OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
-        orderResponseDto.setUser(userServiceClient.getUserById(order.getUserId(), token));
+        orderResponseDto.setUser(userServiceClient.getUserById(userId, token));
         return orderResponseDto;
     }
 
-    public List<OrderResponseDto> getOrdersByIds(List<Long> ids, Long userId) {
+    public List<OrderResponseDto> getOrdersByIds(List<Long> ids, String token, Long userId) {
         List<Order> orders = orderRepository.findOrdersByIdIn(ids);
 
         if (orders == null || orders.isEmpty()) {
@@ -80,10 +82,14 @@ public class OrderService {
             validateOrderOwner(order, userId);
         }
 
-        return orders.stream().map(orderMapper::toOrderResponseDto).collect(Collectors.toList());
+        return orders.stream()
+                .map(orderMapper::toOrderResponseDto)
+                .peek(orderResponseDto ->
+                        orderResponseDto.setUser(userServiceClient.getUserById(userId, token)))
+                .collect(Collectors.toList());
     }
 
-    public List<OrderResponseDto> getOrdersByStatus(String status, Long userId) {
+    public List<OrderResponseDto> getOrdersByStatus(String status, String token, Long userId) {
         OrderStatus orderStatus;
         try {
             orderStatus = OrderStatus.valueOf(status.toUpperCase());
@@ -101,11 +107,15 @@ public class OrderService {
 
         log.info("{} Orders with {} status loaded from database", orders.size(), status);
 
-        return orders.stream().map(orderMapper::toOrderResponseDto).collect(Collectors.toList());
+        return orders.stream()
+                .map(orderMapper::toOrderResponseDto)
+                .peek(orderResponseDto ->
+                        orderResponseDto.setUser(userServiceClient.getUserById(userId, token)))
+                .collect(Collectors.toList());
     }
 
     @Transactional
-    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto, Long userId) {
+    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto, String token, Long userId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order with {} id was not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
@@ -120,7 +130,9 @@ public class OrderService {
 
         log.info("Order {} updated", orderId);
 
-        return orderMapper.toOrderResponseDto(order);
+        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order);
+        orderResponseDto.setUser(userServiceClient.getUserById(userId, token));
+        return orderResponseDto;
     }
 
     @Transactional

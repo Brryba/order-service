@@ -32,8 +32,9 @@ public class OrderController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponseDto addOrder(@Valid @RequestBody OrderCreateDto orderRequestDto,
+                                     @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
                                      @AuthenticationPrincipal Long userId) {
-        return orderService.addOrder(orderRequestDto, userId);
+        return orderService.addOrder(orderRequestDto, token, userId);
     }
 
     @GetMapping("/{id}")
@@ -47,23 +48,26 @@ public class OrderController {
     @GetMapping()
     @ResponseStatus(HttpStatus.OK)
     public List<OrderResponseDto> getOrdersByIds(@RequestParam List<Long> ids,
+                                                 @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
                                                  @AuthenticationPrincipal Long userId) {
-        return orderService.getOrdersByIds(ids, userId);
+        return orderService.getOrdersByIds(ids, token, userId);
     }
 
     @GetMapping("/status/{status}")
     @ResponseStatus(HttpStatus.OK)
     public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status,
+                                                    @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
                                                     @AuthenticationPrincipal Long userId) {
-        return orderService.getOrdersByStatus(status, userId);
+        return orderService.getOrdersByStatus(status, token, userId);
     }
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public OrderResponseDto updateOrder(@PathVariable long id,
                                         @RequestBody @Valid OrderUpdateDto orderUpdateDto,
+                                        @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
                                         @AuthenticationPrincipal Long userId) {
-        return orderService.updateOrder(id, orderUpdateDto, userId);
+        return orderService.updateOrder(id, orderUpdateDto, token, userId);
     }
 
     @DeleteMapping("/{id}")
