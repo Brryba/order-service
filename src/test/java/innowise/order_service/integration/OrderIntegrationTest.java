@@ -10,10 +10,13 @@ import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Item;
+import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderStatus;
+import innowise.order_service.exception.item.ItemNotFoundException;
+import innowise.order_service.exception.order.OrderNotFoundException;
+import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.repository.OrderRepository;
-import innowise.order_service.service.ItemService;
 import innowise.order_service.service.OrderService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -30,15 +32,17 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.wiremock.spring.EnableWireMock;
 
-
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -98,7 +102,10 @@ public class OrderIntegrationTest {
                 .birthDate(LocalDate.now().minusYears(20))
                 .email("example@example.com")
                 .build();
+    }
 
+    @BeforeEach
+    void setUp() {
         item = Item.builder()
                 .price(BigDecimal.ONE)
                 .name("Item name")
@@ -114,13 +121,88 @@ public class OrderIntegrationTest {
         ));
     }
 
-    @Test
-    @Transactional
-    void testCreateNew() {
+    private long saveItem() {
         long itemId = itemRepository.save(item).getId();
         orderCreateDto.getOrderItems().forEach(orderItem -> orderItem.setItemId(itemId));
+        return itemId;
+    }
+
+    @Test
+    @Transactional
+    void testCreateNew_savedInDatabase_withOrderItems() {
+        long itemId = saveItem();
 
         OrderResponseDto createdOrder = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
-        assertEquals("User name", createdOrder.getUser().getName());
+        assertEquals(USER_ID, createdOrder.getUser().getId());
+
+        Optional<Order> foundOrder = orderRepository.findById(createdOrder.getId());
+        assertTrue(foundOrder.isPresent());
+        assertEquals(createdOrder.getId(), foundOrder.get().getId());
+        assertEquals(orderCreateDto.getOrderItems().size(), foundOrder.get().getOrderItems().size());
+        assertEquals(orderCreateDto.getOrderItems().getFirst().getItemId(),
+                foundOrder.get().getOrderItems().getFirst().getItem().getId());
+        assertEquals(orderCreateDto.getOrderItems().getFirst().getQuantity(),
+                foundOrder.get().getOrderItems().getFirst().getQuantity());
+    }
+
+
+    @Test
+    @Transactional
+    void testCreateNewOrder_noItemsFoundInDatabase() {
+        orderCreateDto.getOrderItems().forEach(orderItem -> orderItem.setItemId(99999L));
+
+        assertThrows(ItemNotFoundException.class, () ->
+                orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID));
+    }
+
+    @Test
+    @Transactional
+    void testGetOrdersByStatus_afterSave() {
+        long itemId = saveItem();
+        orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
+        orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
+
+        List<OrderResponseDto> newOrders =
+                orderService.getOrdersByStatus(orderCreateDto.getStatus().name(), MOCK_TOKEN, USER_ID);
+        assertEquals(2, newOrders.size());
+
+        assertThrows(OrderNotFoundException.class, () ->
+                orderService.getOrdersByStatus(OrderStatus.PAYMENT_FAILED.name(), MOCK_TOKEN, USER_ID));
+    }
+
+    @Test
+    @Transactional
+    void testUpdateOrderStatus_afterSave() {
+        long itemId = saveItem();
+
+        long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
+        orderService.updateOrder(orderId, orderUpdateDto, MOCK_TOKEN, USER_ID);
+
+        Optional<Order> foundOrder = orderRepository.findById(orderId);
+        assertTrue(foundOrder.isPresent());
+        assertEquals(orderUpdateDto.getStatus(), foundOrder.get().getStatus());
+    }
+
+    @Test
+    @Transactional
+    void testUpdateOrder_failsWhenUserIsNotOrderOwner() {
+        long itemId = saveItem();
+
+        long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
+
+        assertThrows(OrderAccessDeniedException.class, () ->
+                orderService.updateOrder(orderId, orderUpdateDto, MOCK_TOKEN, 99999L));
+    }
+
+    @Test
+    @Transactional
+    void deleteOrder_notFoundInDatabase() {
+        long itemId = saveItem();
+
+        long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
+        orderService.deleteOrder(orderId, USER_ID);
+
+        Optional<Order> foundOrder = orderRepository.findById(orderId);
+        assertTrue(foundOrder.isEmpty());
     }
 }
