@@ -1,5 +1,6 @@
 package innowise.order_service;
 
+import innowise.order_service.configuration.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;

@@ -1,0 +1,242 @@
+package innowise.order_service.unit.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import innowise.order_service.controller.ExceptionController;
+import innowise.order_service.controller.ItemController;
+import innowise.order_service.dto.item.ItemRequestDto;
+import innowise.order_service.dto.item.ItemResponseDto;
+import innowise.order_service.entity.Item;
+import innowise.order_service.exception.item.ItemNotFoundException;
+import innowise.order_service.security.JwtAuthenticationFilter;
+import innowise.order_service.security.JwtUtil;
+import innowise.order_service.security.SecurityConfig;
+import innowise.order_service.service.ItemService;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+import java.math.BigDecimal;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(controllers = {
+        ItemController.class,
+        ExceptionController.class,
+        JwtAuthenticationFilter.class,
+        SecurityConfig.class
+})
+@AutoConfigureMockMvc
+@EnableWebMvc
+@ExtendWith(MockitoExtension.class)
+public class ItemControllerTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private ItemService itemService;
+
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private static ItemRequestDto itemRequestDto;
+    private static String itemRequestDtoJson;
+    private static ItemResponseDto itemResponseDto;
+    private static final long ITEM_ID = 1;
+    private static final String ITEM_NAME = "Item Name";
+    private static final BigDecimal ITEM_PRICE = BigDecimal.valueOf(10);
+    private static final String MOCK_TOKEN = "mockToken";
+
+    @BeforeAll
+    static void setup() {
+        itemRequestDto = ItemRequestDto.builder()
+                .name(ITEM_NAME)
+                .price(ITEM_PRICE)
+                .build();
+
+        itemResponseDto = ItemResponseDto.builder()
+                .id(ITEM_ID)
+                .name(ITEM_NAME)
+                .price(ITEM_PRICE)
+                .build();
+    }
+
+    @BeforeEach
+    void beforeEach() throws JsonProcessingException {
+        when(jwtUtil.isTokenValid(any(String.class))).thenReturn(true);
+        when(jwtUtil.getUserIdFromToken(MOCK_TOKEN)).thenReturn(1L);
+    }
+
+    @Test
+    void testCreateItem_whenValidRequest_201() throws Exception {
+        when(itemService.createItem(itemRequestDto)).thenReturn(itemResponseDto);
+
+        System.out.println(itemService.createItem(itemRequestDto));
+
+        mockMvc.perform(post("/api/item")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemRequestDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(ITEM_ID))
+                .andExpect(jsonPath("$.name").value(ITEM_NAME))
+                .andExpect(jsonPath("$.price").value(ITEM_PRICE));
+    }
+
+    @Test
+    void testCreateItem_whenInvalidRequestParams_shouldReturn_400() throws Exception {
+        mockMvc.perform(post("/api/item")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString("no params"))).
+                andExpect(status().isBadRequest());
+
+        verify(itemService, never()).createItem(itemRequestDto);
+    }
+
+    @Test
+    void testGetItem_whenExists_shouldReturn200() throws Exception {
+        when(itemService.getItemById(ITEM_ID)).thenReturn(itemResponseDto);
+
+        mockMvc.perform(get("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(ITEM_ID))
+                .andExpect(jsonPath("$.name").value(ITEM_NAME))
+                .andExpect(jsonPath("$.price").value(ITEM_PRICE.doubleValue()));
+    }
+
+    @Test
+    void testGetItem_whenNotExists_shouldReturn404() throws Exception {
+        when(itemService.getItemById(ITEM_ID)).thenThrow(new ItemNotFoundException("Item not found"));
+
+        mockMvc.perform(get("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testUpdateItem_whenValid_shouldReturn200() throws Exception {
+        when(itemService.updateItem(itemRequestDto, ITEM_ID)).thenReturn(itemResponseDto);
+
+        mockMvc.perform(put("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemRequestDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(ITEM_ID))
+                .andExpect(jsonPath("$.name").value(ITEM_NAME))
+                .andExpect(jsonPath("$.price").value(ITEM_PRICE.doubleValue()));
+    }
+
+    @Test
+    void testUpdateItem_whenInvalidBody_shouldReturn400() throws Exception {
+        mockMvc.perform(put("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString("invalid body")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testDeleteItem_whenExists_shouldReturn204() throws Exception {
+        doNothing().when(itemService).deleteItem(ITEM_ID);
+
+        mockMvc.perform(delete("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                .andExpect(status().isNoContent());
+
+        verify(itemService).deleteItem(ITEM_ID);
+    }
+
+    @Test
+    void testDeleteItem_whenNotExists_shouldReturn404() throws Exception {
+        doThrow(new ItemNotFoundException("Item not found"))
+                .when(itemService).deleteItem(ITEM_ID);
+
+        mockMvc.perform(delete("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                .andExpect(status().isNotFound());
+    }
+
+
+    @Test
+    void testAllEndpoints_whenNoAuth_shouldReturn401() throws Exception {
+        mockMvc.perform(get("/api/item/{id}", ITEM_ID))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/item")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemRequestDto)))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(put("/api/item/{id}", ITEM_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(itemRequestDto)))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete("/api/item/{id}", ITEM_ID))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testAllEndpoints_whenInvalidToken_shouldReturn403() throws Exception {
+        when(jwtUtil.isTokenValid(any(String.class))).thenReturn(false);
+
+        mockMvc.perform(get("/api/item/{id}", ITEM_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer invalid_token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testCreateItem_whenNameIsBlank_shouldReturn400() throws Exception {
+        ItemRequestDto invalidRequest = ItemRequestDto.builder()
+                .name("")
+                .price(ITEM_PRICE)
+                .build();
+
+        mockMvc.perform(post("/api/item")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateItem_whenPriceIsNegative_shouldReturn400() throws Exception {
+        ItemRequestDto invalidRequest = ItemRequestDto.builder()
+                .name("Name")
+                .price(new BigDecimal(-1))
+                .build();
+
+        mockMvc.perform(post("/api/item")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+}

@@ -1,4 +1,4 @@
-package innowise.order_service.unit;
+package innowise.order_service.unit.service;
 
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
