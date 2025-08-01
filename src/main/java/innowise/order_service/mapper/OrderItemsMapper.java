@@ -17,5 +17,6 @@ public interface OrderItemsMapper {
     OrderItem toOrderItem(OrderItemRequestDto orderItemRequestDto);
 
     @Mapping(target = "itemId", source = "item.id")
+    @Mapping(target = "name", source = "item.name")
     OrderItemResponseDto toOrderItemResponseDto(OrderItem orderItem);
 }

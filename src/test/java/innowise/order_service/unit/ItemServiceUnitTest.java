@@ -5,14 +5,12 @@ import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.exception.item.DuplicateItemNameException;
 import innowise.order_service.exception.item.ItemNotFoundException;
-import innowise.order_service.mapper.ItemMapper;
 import innowise.order_service.mapper.ItemMapperImpl;
 import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.service.ItemService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,10 +19,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 
 @ExtendWith(MockitoExtension.class)
 @SpringBootTest(classes = {ItemMapperImpl.class, ItemService.class})

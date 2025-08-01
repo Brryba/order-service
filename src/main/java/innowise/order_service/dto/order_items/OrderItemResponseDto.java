@@ -11,4 +11,6 @@ public class OrderItemResponseDto {
     private Long itemId;
 
     private Integer quantity;
+
+    private String name;
 }
