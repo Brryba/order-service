@@ -56,6 +56,7 @@ public class UserServiceClient {
 
     @Recover
     public UserResponseDto recoverSendMockUser(RestClientException e, Long userId, String token) {
+        log.warn("Error {} receiving response", e.getMessage());
         log.warn("Unable to get response form user service after {} attempts.", MAX_RETRY_ATTEMPTS);
 
         return UserResponseDto.builder()

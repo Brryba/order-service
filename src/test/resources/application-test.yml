@@ -1,5 +1,10 @@
+wiremock:
+  server:
+    port: 8080
+    host: localhost
+
 microservices:
   url:
-    user_service: http://0:0:0:0/80
+    user_service: http://${wiremock.server.host}:${wiremock.server.port}
 
 JWT_KEY: secret-key-for-jwt-util-with-correct-length-but-not-random-for-test-only
