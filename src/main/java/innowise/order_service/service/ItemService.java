@@ -24,7 +24,7 @@ public class ItemService {
         validateItemNameUnique(itemRequestDto.getName());
 
         Item item = itemMapper.toItem(itemRequestDto);
-        itemRepository.save(item);
+        item = itemRepository.save(item);
 
         log.info("Item {} created", item.getName());
 
@@ -61,7 +61,7 @@ public class ItemService {
         log.info("Item {} deleted", item.getId());
     }
 
-    Item loadItemFromDatabase(long id) {
+    private Item loadItemFromDatabase(long id) {
         Item item = itemRepository.findById(id).orElseThrow(() -> {
             log.warn("Item with id {} not found", id);
             return new ItemNotFoundException("Item with id " + id + " not found");
@@ -72,7 +72,7 @@ public class ItemService {
         return item;
     }
 
-    void validateItemNameUnique(String itemName) throws DuplicateItemNameException {
+    private void validateItemNameUnique(String itemName) throws DuplicateItemNameException {
         if (itemRepository.existsByName(itemName)) {
             log.warn("Item {} already exists", itemName);
             throw new DuplicateItemNameException("Item " + itemName + " already exists");
