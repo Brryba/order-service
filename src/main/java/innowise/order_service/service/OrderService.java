@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,27 +149,31 @@ public class OrderService {
     }
 
     private void setOrderItems(Order order, List<OrderItemRequestDto> orderItemDtos) {
-        List<Long> itemIds = orderItemDtos
-                .stream()
-                .map(OrderItemRequestDto::getItemId)
-                .toList();
+        Map<Long, Integer> itemIdTotalQuantityMap = orderItemDtos.stream()
+                .collect(Collectors.toMap(
+                        OrderItemRequestDto::getItemId,
+                        OrderItemRequestDto::getQuantity,
+                        Integer::sum
+                ));
 
-        List<Item> items = itemRepository.findItemsByIdIn(itemIds);
+        List<Item> items = itemRepository.findItemsByIdIn(itemIdTotalQuantityMap.keySet());
 
-        log.info("Loaded items with ids {}", itemIds);
+        log.info("Loaded items with ids {}", itemIdTotalQuantityMap);
 
-        if (items.size() < orderItemDtos.size()) {
+        if (items.size() < itemIdTotalQuantityMap.size()) {
             log.warn("Some requested items were not found. Expected: {} items, Found: {}",
-                    itemIds.size(), items.size());
+                    itemIdTotalQuantityMap.size(), items.size());
             throw new ItemNotFoundException("Some items in order were not found. Expected:" +
-                    itemIds.size() + " items, Found: " + items.size());
+                    itemIdTotalQuantityMap.size() + " items, Found: " + items.size());
         }
 
         order.setOrderItems(new ArrayList<>());
-        for (int i = 0; i < items.size(); i++) {
-            OrderItem orderItem = orderItemsMapper.toOrderItem(orderItemDtos.get(i));
-            orderItem.setItem(items.get(i));
-            orderItem.setOrder(order);
+        for (Item item : items) {
+            OrderItem orderItem = OrderItem.builder()
+                    .quantity(itemIdTotalQuantityMap.get(item.getId()))
+                    .item(item)
+                    .order(order)
+                    .build();
             order.getOrderItems().add(orderItem);
         }
 
