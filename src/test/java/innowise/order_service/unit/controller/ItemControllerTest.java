@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -95,12 +96,11 @@ public class ItemControllerTest {
     void testCreateItem_whenValidRequest_201() throws Exception {
         when(itemService.createItem(itemRequestDto)).thenReturn(itemResponseDto);
 
-        System.out.println(itemService.createItem(itemRequestDto));
-
         mockMvc.perform(post("/api/item")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemRequestDto)))
+                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(ITEM_ID))
                 .andExpect(jsonPath("$.name").value(ITEM_NAME))

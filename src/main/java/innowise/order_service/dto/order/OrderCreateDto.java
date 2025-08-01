@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +15,7 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
+@EqualsAndHashCode
 public class OrderCreateDto {
     @NotNull(message = "Order status cannot be null")
     private OrderStatus status;
