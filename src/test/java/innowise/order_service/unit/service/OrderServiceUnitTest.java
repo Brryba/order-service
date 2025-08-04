@@ -33,11 +33,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -138,7 +140,7 @@ class OrderServiceUnitTest {
 
     @Test
     void addOrder_WhenValidRequest_ShouldCreateAndReturnOrder() {
-        when(itemRepository.findItemsByIdIn(Arrays.asList(ITEM_ID_1, ITEM_ID_2)))
+        when(itemRepository.findItemsByIdIn(eq(Set.of(ITEM_ID_1, ITEM_ID_2))))
                 .thenReturn(Arrays.asList(item1, item2));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
@@ -148,21 +150,21 @@ class OrderServiceUnitTest {
         assertEquals(orderCreateDto.getStatus(), result.getStatus());
         assertEquals(orderCreateDto.getOrderItems().size(), result.getOrderItems().size());
         assertEquals(userResponseDto, result.getUser());
-        verify(itemRepository).findItemsByIdIn(Arrays.asList(ITEM_ID_1, ITEM_ID_2));
+        verify(itemRepository).findItemsByIdIn(eq(Set.of(ITEM_ID_1, ITEM_ID_2)));
         verify(orderRepository).save(any(Order.class));
         verify(userServiceClient).getUserById(USER_ID, TOKEN);
     }
 
     @Test
     void addOrder_WhenItemsNotFound_ShouldThrowItemNotFoundException() {
-        when(itemRepository.findItemsByIdIn(Arrays.asList(ITEM_ID_1, ITEM_ID_2)))
+        when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
                 .thenReturn(Collections.singletonList(item1));
 
         assertThatThrownBy(() -> orderService.addOrder(orderCreateDto, TOKEN, USER_ID))
                 .isInstanceOf(ItemNotFoundException.class)
                 .hasMessageContaining("Some items in order were not found");
 
-        verify(itemRepository).findItemsByIdIn(Arrays.asList(ITEM_ID_1, ITEM_ID_2));
+        verify(itemRepository).findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2));
         verify(orderRepository, never()).save(any());
     }
 
