@@ -7,8 +7,6 @@ import innowise.order_service.entity.Item;
 import innowise.order_service.exception.item.DuplicateItemNameException;
 import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.service.ItemService;
-import innowise.order_service.service.OrderService;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +21,6 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,21 +39,10 @@ public class ItemIntegrationTest {
     private PostgreSQLContainer<?> postgresContainer;
 
     private static ItemRequestDto itemRequestDto;
-    private static ItemResponseDto itemResponseDto;
 
     private static final long ITEM_ID = 1;
     private static final String ITEM_NAME = "Item Name";
     private static final BigDecimal ITEM_PRICE = BigDecimal.valueOf(10);
-    private static final String MOCK_TOKEN = "mockToken";
-
-    @BeforeAll
-    static void setup() {
-        itemResponseDto = ItemResponseDto.builder()
-                .id(ITEM_ID)
-                .name(ITEM_NAME)
-                .price(ITEM_PRICE)
-                .build();
-    }
 
     @BeforeEach
     void init() {
@@ -96,7 +82,7 @@ public class ItemIntegrationTest {
         ItemResponseDto createdItem = itemService.createItem(itemRequestDto);
 
         itemRequestDto.setName("Updated Item Name");
-        ItemResponseDto updatedItem = itemService.createItem(itemRequestDto);
+        itemService.createItem(itemRequestDto);
 
         assertThrows(DuplicateItemNameException.class, () -> itemService.updateItem(itemRequestDto, createdItem.getId()));
     }

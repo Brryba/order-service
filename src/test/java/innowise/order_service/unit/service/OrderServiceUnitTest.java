@@ -39,7 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,7 +61,6 @@ class OrderServiceUnitTest {
 
     private static OrderCreateDto orderCreateDto;
     private static OrderUpdateDto orderUpdateDto;
-    private static OrderResponseDto orderResponseDto;
     private static Order order;
     private static Item item1;
     private static Item item2;
@@ -140,7 +138,7 @@ class OrderServiceUnitTest {
 
     @Test
     void addOrder_WhenValidRequest_ShouldCreateAndReturnOrder() {
-        when(itemRepository.findItemsByIdIn(eq(Set.of(ITEM_ID_1, ITEM_ID_2))))
+        when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
                 .thenReturn(Arrays.asList(item1, item2));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
@@ -150,7 +148,7 @@ class OrderServiceUnitTest {
         assertEquals(orderCreateDto.getStatus(), result.getStatus());
         assertEquals(orderCreateDto.getOrderItems().size(), result.getOrderItems().size());
         assertEquals(userResponseDto, result.getUser());
-        verify(itemRepository).findItemsByIdIn(eq(Set.of(ITEM_ID_1, ITEM_ID_2)));
+        verify(itemRepository).findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2));
         verify(orderRepository).save(any(Order.class));
         verify(userServiceClient).getUserById(USER_ID, TOKEN);
     }

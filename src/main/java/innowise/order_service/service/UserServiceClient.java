@@ -23,7 +23,7 @@ import org.springframework.web.client.RestTemplate;
 public class UserServiceClient {
     private final RestTemplate restTemplate;
 
-    private final int MAX_RETRY_ATTEMPTS = 3;
+    private final static int MAX_RETRY_ATTEMPTS = 3;
 
     @Value("${microservices.url.user_service}")
     private String userServiceUrl;

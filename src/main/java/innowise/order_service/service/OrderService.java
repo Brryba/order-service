@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -83,7 +82,7 @@ public class OrderService {
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId, token);
         return orders.stream()
                 .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public List<OrderResponseDto> getOrdersByStatus(String status, String token, Long userId) {
@@ -107,7 +106,7 @@ public class OrderService {
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId, token);
         return orders.stream()
                 .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional

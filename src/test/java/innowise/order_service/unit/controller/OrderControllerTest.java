@@ -1,26 +1,20 @@
 package innowise.order_service.unit.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import innowise.order_service.controller.ExceptionController;
-import innowise.order_service.controller.ItemController;
 import innowise.order_service.controller.OrderController;
-import innowise.order_service.dto.item.ItemRequestDto;
-import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.order_items.OrderItemResponseDto;
 import innowise.order_service.dto.user.UserResponseDto;
-import innowise.order_service.entity.Item;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.exception.order.OrderNotFoundException;
 import innowise.order_service.security.JwtAuthenticationFilter;
 import innowise.order_service.security.JwtUtil;
 import innowise.order_service.security.SecurityConfig;
-import innowise.order_service.service.ItemService;
 import innowise.order_service.service.OrderService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,9 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -132,7 +124,7 @@ public class OrderControllerTest {
     }
 
     @BeforeEach
-    void beforeEach() throws JsonProcessingException {
+    void beforeEach() {
         when(jwtUtil.isTokenValid(any(String.class))).thenReturn(true);
         when(jwtUtil.getUserIdFromToken(MOCK_TOKEN)).thenReturn(USER_ID);
     }

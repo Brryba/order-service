@@ -2,7 +2,6 @@ package innowise.order_service.controller;
 
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
-import innowise.order_service.entity.Item;
 import innowise.order_service.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

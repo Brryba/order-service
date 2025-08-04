@@ -75,8 +75,6 @@ public class OrderIntegrationTest {
     private static OrderUpdateDto orderUpdateDto;
     private static UserResponseDto userResponseDto;
     private static Item item;
-    private static final long ORDER_ID = 1;
-    private static final OrderStatus ORDER_STATUS = OrderStatus.NEW;
     private static final long USER_ID = 1;
     private static final String MOCK_TOKEN = "mockToken";
 
@@ -121,16 +119,15 @@ public class OrderIntegrationTest {
         ));
     }
 
-    private long saveItem() {
+    private void saveItem() {
         long itemId = itemRepository.save(item).getId();
         orderCreateDto.getOrderItems().forEach(orderItem -> orderItem.setItemId(itemId));
-        return itemId;
     }
 
     @Test
     @Transactional
     void testCreateNew_savedInDatabase_withOrderItems() {
-        long itemId = saveItem();
+        saveItem();
 
         OrderResponseDto createdOrder = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
         assertEquals(USER_ID, createdOrder.getUser().getId());
@@ -158,7 +155,7 @@ public class OrderIntegrationTest {
     @Test
     @Transactional
     void testGetOrdersByStatus_afterSave() {
-        long itemId = saveItem();
+        saveItem();
         orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
         orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
 
@@ -173,7 +170,7 @@ public class OrderIntegrationTest {
     @Test
     @Transactional
     void testUpdateOrderStatus_afterSave() {
-        long itemId = saveItem();
+        saveItem();
 
         long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
         orderService.updateOrder(orderId, orderUpdateDto, MOCK_TOKEN, USER_ID);
@@ -186,7 +183,7 @@ public class OrderIntegrationTest {
     @Test
     @Transactional
     void testUpdateOrder_failsWhenUserIsNotOrderOwner() {
-        long itemId = saveItem();
+        saveItem();
 
         long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
 
@@ -197,7 +194,7 @@ public class OrderIntegrationTest {
     @Test
     @Transactional
     void deleteOrder_notFoundInDatabase() {
-        long itemId = saveItem();
+        saveItem();
 
         long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
         orderService.deleteOrder(orderId, USER_ID);

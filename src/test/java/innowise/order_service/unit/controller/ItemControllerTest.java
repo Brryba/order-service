@@ -1,12 +1,10 @@
 package innowise.order_service.unit.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import innowise.order_service.controller.ExceptionController;
 import innowise.order_service.controller.ItemController;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
-import innowise.order_service.entity.Item;
 import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.security.JwtAuthenticationFilter;
 import innowise.order_service.security.JwtUtil;
@@ -65,7 +63,6 @@ public class ItemControllerTest {
     private ObjectMapper objectMapper;
 
     private static ItemRequestDto itemRequestDto;
-    private static String itemRequestDtoJson;
     private static ItemResponseDto itemResponseDto;
     private static final long ITEM_ID = 1;
     private static final String ITEM_NAME = "Item Name";
@@ -87,7 +84,7 @@ public class ItemControllerTest {
     }
 
     @BeforeEach
-    void beforeEach() throws JsonProcessingException {
+    void beforeEach() {
         when(jwtUtil.isTokenValid(any(String.class))).thenReturn(true);
         when(jwtUtil.getUserIdFromToken(MOCK_TOKEN)).thenReturn(1L);
     }
