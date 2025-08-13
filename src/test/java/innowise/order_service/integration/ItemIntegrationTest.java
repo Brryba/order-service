@@ -40,7 +40,6 @@ public class ItemIntegrationTest {
 
     private static ItemRequestDto itemRequestDto;
 
-    private static final long ITEM_ID = 1;
     private static final String ITEM_NAME = "Item Name";
     private static final BigDecimal ITEM_PRICE = BigDecimal.valueOf(10);
 
