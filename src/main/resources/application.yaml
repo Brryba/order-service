@@ -24,3 +24,6 @@ spring:
 microservices:
   url:
     user_service: ${USER_SERVICE_URL}
+
+security:
+  jwt-key: ${JWT_KEY}
