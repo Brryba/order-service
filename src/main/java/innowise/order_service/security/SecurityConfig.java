@@ -31,7 +31,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
-                                .requestMatchers("/error").permitAll()
+                                .requestMatchers("/error", "/actuator/**").permitAll()
                                 .requestMatchers("/api/order/**",
                                         "/api/item/**").authenticated()
                                 .anyRequest().denyAll()
