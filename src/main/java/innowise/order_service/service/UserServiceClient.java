@@ -25,11 +25,13 @@ public class UserServiceClient {
 
     private static final int MAX_RETRY_ATTEMPTS = 3;
 
+    @Value("${services.user-service.url:lb://user-service}")
+    private String userServiceUrl;
+
     @Retryable(retryFor = {RestClientException.class},
             maxAttempts = MAX_RETRY_ATTEMPTS,
             backoff = @Backoff(delay = 1000, multiplier = 1.5))
     public UserResponseDto getUserById(Long userId, String token) {
-        final String userServiceUrl = "lb://user-service";
         String url = userServiceUrl + "/api/user/me";
 
         log.info("Sending request to user service: {}", url);

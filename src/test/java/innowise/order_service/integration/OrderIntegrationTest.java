@@ -22,15 +22,17 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.wiremock.spring.EnableWireMock;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 
@@ -48,8 +50,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ActiveProfiles("test")
 @Testcontainers
 @Import(TestcontainersConfiguration.class)
-@EnableWireMock
+@AutoConfigureWireMock(port = 8081)
 public class OrderIntegrationTest {
+    @TestConfiguration
+    static class RestTemplateConfiguration {
+        @Bean
+        @Primary
+        public RestTemplate noLoadBalancerRestTemplate() {
+            return new RestTemplate();
+        }
+    }
+
     @Autowired
     private OrderService orderService;
 
@@ -63,13 +74,7 @@ public class OrderIntegrationTest {
     private PostgreSQLContainer<?> postgresContainer;
 
     @Autowired
-    private RestTemplate restTemplate;
-
-    @Autowired
     private ObjectMapper objectMapper;
-
-    @Value("${microservices.url.user_service}")
-    private String userServiceUrl;
 
     private static OrderCreateDto orderCreateDto;
     private static OrderUpdateDto orderUpdateDto;
