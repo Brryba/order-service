@@ -43,6 +43,7 @@ import java.util.Optional;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -81,7 +82,6 @@ public class OrderIntegrationTest {
     private static UserResponseDto userResponseDto;
     private static Item item;
     private static final long USER_ID = 1;
-    private static final String MOCK_TOKEN = "mockToken";
 
     @BeforeAll
     static void setup() {
@@ -134,7 +134,7 @@ public class OrderIntegrationTest {
     void testCreateNew_savedInDatabase_withOrderItems() {
         saveItem();
 
-        OrderResponseDto createdOrder = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
+        OrderResponseDto createdOrder = orderService.addOrder(orderCreateDto, USER_ID);
         assertEquals(USER_ID, createdOrder.getUser().getId());
 
         Optional<Order> foundOrder = orderRepository.findById(createdOrder.getId());
@@ -145,6 +145,7 @@ public class OrderIntegrationTest {
                 foundOrder.get().getOrderItems().getFirst().getItem().getId());
         assertEquals(orderCreateDto.getOrderItems().getFirst().getQuantity(),
                 foundOrder.get().getOrderItems().getFirst().getQuantity());
+        assertNotNull(createdOrder.getUser().getEmail());
     }
 
 
@@ -154,22 +155,22 @@ public class OrderIntegrationTest {
         orderCreateDto.getOrderItems().forEach(orderItem -> orderItem.setItemId(99999L));
 
         assertThrows(ItemNotFoundException.class, () ->
-                orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID));
+                orderService.addOrder(orderCreateDto, USER_ID));
     }
 
     @Test
     @Transactional
     void testGetOrdersByStatus_afterSave() {
         saveItem();
-        orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
-        orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID);
+        orderService.addOrder(orderCreateDto, USER_ID);
+        orderService.addOrder(orderCreateDto, USER_ID);
 
         List<OrderResponseDto> newOrders =
-                orderService.getOrdersByStatus(orderCreateDto.getStatus().name(), MOCK_TOKEN, USER_ID);
+                orderService.getOrdersByStatus(orderCreateDto.getStatus().name(), USER_ID);
         assertEquals(2, newOrders.size());
 
         assertThrows(OrderNotFoundException.class, () ->
-                orderService.getOrdersByStatus(OrderStatus.PAYMENT_FAILED.name(), MOCK_TOKEN, USER_ID));
+                orderService.getOrdersByStatus(OrderStatus.PAYMENT_FAILED.name(), USER_ID));
     }
 
     @Test
@@ -177,8 +178,8 @@ public class OrderIntegrationTest {
     void testUpdateOrderStatus_afterSave() {
         saveItem();
 
-        long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
-        orderService.updateOrder(orderId, orderUpdateDto, MOCK_TOKEN, USER_ID);
+        long orderId = orderService.addOrder(orderCreateDto, USER_ID).getId();
+        orderService.updateOrder(orderId, orderUpdateDto, USER_ID);
 
         Optional<Order> foundOrder = orderRepository.findById(orderId);
         assertTrue(foundOrder.isPresent());
@@ -190,10 +191,10 @@ public class OrderIntegrationTest {
     void testUpdateOrder_failsWhenUserIsNotOrderOwner() {
         saveItem();
 
-        long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
+        long orderId = orderService.addOrder(orderCreateDto,  USER_ID).getId();
 
         assertThrows(OrderAccessDeniedException.class, () ->
-                orderService.updateOrder(orderId, orderUpdateDto, MOCK_TOKEN, 99999L));
+                orderService.updateOrder(orderId, orderUpdateDto, 99999L));
     }
 
     @Test
@@ -201,7 +202,7 @@ public class OrderIntegrationTest {
     void deleteOrder_notFoundInDatabase() {
         saveItem();
 
-        long orderId = orderService.addOrder(orderCreateDto, MOCK_TOKEN, USER_ID).getId();
+        long orderId = orderService.addOrder(orderCreateDto, USER_ID).getId();
         orderService.deleteOrder(orderId, USER_ID);
 
         Optional<Order> foundOrder = orderRepository.findById(orderId);

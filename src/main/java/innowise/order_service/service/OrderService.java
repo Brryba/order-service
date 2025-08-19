@@ -42,7 +42,7 @@ public class OrderService {
     private final UserServiceClient userServiceClient;
 
     @Transactional
-    public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, String token, Long userId) {
+    public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, Long userId) {
         Order order = orderMapper.toOrder(orderCreateDto);
         order.setUserId(userId);
         setOrderItems(order, orderCreateDto.getOrderItems());
@@ -51,10 +51,10 @@ public class OrderService {
         order = orderRepository.save(order);
         log.info("Order {} created", order.getId());
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId, token));
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
     }
 
-    public OrderResponseDto getOrderById(Long orderId, String token, Long userId) {
+    public OrderResponseDto getOrderById(Long orderId, Long userId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order {} not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
@@ -63,10 +63,10 @@ public class OrderService {
         log.info("Order {} loaded", orderId);
         validateOrderOwner(order, userId);
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId, token));
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
     }
 
-    public List<OrderResponseDto> getOrdersByIds(List<Long> ids, String token, Long userId) {
+    public List<OrderResponseDto> getOrdersByIds(List<Long> ids, Long userId) {
         List<Order> orders = orderRepository.findOrdersByIdIn(ids);
 
         if (orders == null || orders.isEmpty()) {
@@ -79,13 +79,13 @@ public class OrderService {
             validateOrderOwner(order, userId);
         }
 
-        UserResponseDto userResponseDto = userServiceClient.getUserById(userId, token);
+        UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
         return orders.stream()
                 .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
                 .toList();
     }
 
-    public List<OrderResponseDto> getOrdersByStatus(String status, String token, Long userId) {
+    public List<OrderResponseDto> getOrdersByStatus(String status, Long userId) {
         OrderStatus orderStatus;
         try {
             orderStatus = OrderStatus.valueOf(status.toUpperCase());
@@ -103,14 +103,14 @@ public class OrderService {
 
         log.info("{} Orders with {} status loaded from database", orders.size(), status);
 
-        UserResponseDto userResponseDto = userServiceClient.getUserById(userId, token);
+        UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
         return orders.stream()
                 .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
                 .toList();
     }
 
     @Transactional
-    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto, String token, Long userId) {
+    public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto, Long userId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> {
             log.warn("Order with {} id was not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
@@ -125,7 +125,7 @@ public class OrderService {
 
         log.info("Order {} updated", orderId);
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId, token));
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
     }
 
     @Transactional

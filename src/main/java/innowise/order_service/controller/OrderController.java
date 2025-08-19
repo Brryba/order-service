@@ -7,9 +7,7 @@ import innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,51 +29,48 @@ import java.util.List;
 public class OrderController {
     private final OrderService orderService;
 
+    private final String USER_ID_TOKEN = "X-User-Id";
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponseDto addOrder(@Valid @RequestBody OrderCreateDto orderRequestDto,
-                                     @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
-                                     @AuthenticationPrincipal Long userId) {
-        return orderService.addOrder(orderRequestDto, token, userId);
+                                     @RequestHeader("X-User-Id") Long userId) {
+        return orderService.addOrder(orderRequestDto, userId);
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public OrderResponseDto getOrder(@PathVariable long id,
-                                     @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
-                                     @AuthenticationPrincipal Long userId) {
-        return orderService.getOrderById(id, token, userId);
+                                     @RequestHeader("X-User-Id") Long userId) {
+        return orderService.getOrderById(id, userId);
     }
 
     @GetMapping()
     @ResponseStatus(HttpStatus.OK)
     public List<OrderResponseDto> getOrdersByIds(@RequestParam List<Long> ids,
-                                                 @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
-                                                 @AuthenticationPrincipal Long userId) {
-        return orderService.getOrdersByIds(ids, token, userId);
+                                                 @RequestHeader("X-User-Id") Long userId) {
+        return orderService.getOrdersByIds(ids, userId);
     }
 
     @GetMapping("/status/{status}")
     @ResponseStatus(HttpStatus.OK)
     public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status,
-                                                    @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
-                                                    @AuthenticationPrincipal Long userId) {
-        return orderService.getOrdersByStatus(status, token, userId);
+                                                    @RequestHeader("X-User-Id") Long userId) {
+        return orderService.getOrdersByStatus(status, userId);
     }
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public OrderResponseDto updateOrder(@PathVariable long id,
                                         @RequestBody @Valid OrderUpdateDto orderUpdateDto,
-                                        @RequestHeader(HttpHeaders.AUTHORIZATION) String token,
-                                        @AuthenticationPrincipal Long userId) {
-        return orderService.updateOrder(id, orderUpdateDto, token, userId);
+                                        @RequestHeader("X-User-Id") Long userId) {
+        return orderService.updateOrder(id, orderUpdateDto, userId);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteOrder(@PathVariable long id,
-                            @AuthenticationPrincipal Long userId) {
+                            @RequestHeader("X-User-Id") Long userId) {
         orderService.deleteOrder(id, userId);
     }
 }

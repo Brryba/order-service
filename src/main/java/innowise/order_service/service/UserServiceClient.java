@@ -28,16 +28,18 @@ public class UserServiceClient {
     @Value("${services.user-service.url:lb://user-service}")
     private String userServiceUrl;
 
+    private final String USER_ID_HEADER = "X-User-Id";
+
     @Retryable(retryFor = {RestClientException.class},
             maxAttempts = MAX_RETRY_ATTEMPTS,
             backoff = @Backoff(delay = 1000, multiplier = 1.5))
-    public UserResponseDto getUserById(Long userId, String token) {
+    public UserResponseDto getUserById(Long userId) {
         String url = userServiceUrl + "/api/user/me";
 
         log.info("Sending request to user service: {}", url);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.AUTHORIZATION, token);
+        headers.set(USER_ID_HEADER, userId.toString());
         HttpEntity<?> httpEntity = new HttpEntity<>(headers);
 
         ResponseEntity<UserResponseDto> response = restTemplate.exchange(

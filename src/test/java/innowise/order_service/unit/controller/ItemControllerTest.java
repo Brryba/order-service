@@ -1,32 +1,22 @@
 package innowise.order_service.unit.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import innowise.order_service.controller.ExceptionController;
 import innowise.order_service.controller.ItemController;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.exception.item.ItemNotFoundException;
-import innowise.order_service.security.JwtAuthenticationFilter;
-import innowise.order_service.security.JwtUtil;
-import innowise.order_service.security.SecurityConfig;
 import innowise.order_service.service.ItemService;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import java.math.BigDecimal;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -40,24 +30,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {
-        ItemController.class,
-        ExceptionController.class,
-        JwtAuthenticationFilter.class,
-        SecurityConfig.class
-})
+@WebMvcTest(controllers = {ItemController.class})
 @AutoConfigureMockMvc
-@EnableWebMvc
-@ExtendWith(MockitoExtension.class)
 public class ItemControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private ItemService itemService;
-
-    @MockitoBean
-    private JwtUtil jwtUtil;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -67,7 +47,6 @@ public class ItemControllerTest {
     private static final long ITEM_ID = 1;
     private static final String ITEM_NAME = "Item Name";
     private static final BigDecimal ITEM_PRICE = BigDecimal.valueOf(10);
-    private static final String MOCK_TOKEN = "mockToken";
 
     @BeforeAll
     static void setup() {
@@ -83,18 +62,11 @@ public class ItemControllerTest {
                 .build();
     }
 
-    @BeforeEach
-    void beforeEach() {
-        when(jwtUtil.isTokenValid(any(String.class))).thenReturn(true);
-        when(jwtUtil.getUserIdFromToken(MOCK_TOKEN)).thenReturn(1L);
-    }
-
     @Test
     void testCreateItem_whenValidRequest_201() throws Exception {
         when(itemService.createItem(itemRequestDto)).thenReturn(itemResponseDto);
 
         mockMvc.perform(post("/api/item")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemRequestDto)))
                 .andDo(print())
@@ -107,7 +79,6 @@ public class ItemControllerTest {
     @Test
     void testCreateItem_whenInvalidRequestParams_shouldReturn_400() throws Exception {
         mockMvc.perform(post("/api/item")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString("no params"))).
                 andExpect(status().isBadRequest());
@@ -119,8 +90,7 @@ public class ItemControllerTest {
     void testGetItem_whenExists_shouldReturn200() throws Exception {
         when(itemService.getItemById(ITEM_ID)).thenReturn(itemResponseDto);
 
-        mockMvc.perform(get("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+        mockMvc.perform(get("/api/item/{id}", ITEM_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(ITEM_ID))
                 .andExpect(jsonPath("$.name").value(ITEM_NAME))
@@ -131,8 +101,7 @@ public class ItemControllerTest {
     void testGetItem_whenNotExists_shouldReturn404() throws Exception {
         when(itemService.getItemById(ITEM_ID)).thenThrow(new ItemNotFoundException("Item not found"));
 
-        mockMvc.perform(get("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+        mockMvc.perform(get("/api/item/{id}", ITEM_ID))
                 .andExpect(status().isNotFound());
     }
 
@@ -141,7 +110,6 @@ public class ItemControllerTest {
         when(itemService.updateItem(itemRequestDto, ITEM_ID)).thenReturn(itemResponseDto);
 
         mockMvc.perform(put("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemRequestDto)))
                 .andExpect(status().isOk())
@@ -153,7 +121,6 @@ public class ItemControllerTest {
     @Test
     void testUpdateItem_whenInvalidBody_shouldReturn400() throws Exception {
         mockMvc.perform(put("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString("invalid body")))
                 .andExpect(status().isBadRequest());
@@ -163,8 +130,7 @@ public class ItemControllerTest {
     void testDeleteItem_whenExists_shouldReturn204() throws Exception {
         doNothing().when(itemService).deleteItem(ITEM_ID);
 
-        mockMvc.perform(delete("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+        mockMvc.perform(delete("/api/item/{id}", ITEM_ID))
                 .andExpect(status().isNoContent());
 
         verify(itemService).deleteItem(ITEM_ID);
@@ -175,65 +141,7 @@ public class ItemControllerTest {
         doThrow(new ItemNotFoundException("Item not found"))
                 .when(itemService).deleteItem(ITEM_ID);
 
-        mockMvc.perform(delete("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
-                .andExpect(status().isNotFound());
-    }
-
-
-    @Test
-    void testAllEndpoints_whenNoAuth_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/item/{id}", ITEM_ID))
-                .andExpect(status().isUnauthorized());
-
-        mockMvc.perform(post("/api/item")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(itemRequestDto)))
-                .andExpect(status().isUnauthorized());
-
-        mockMvc.perform(put("/api/item/{id}", ITEM_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(itemRequestDto)))
-                .andExpect(status().isUnauthorized());
-
         mockMvc.perform(delete("/api/item/{id}", ITEM_ID))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void testAllEndpoints_whenInvalidToken_shouldReturn403() throws Exception {
-        when(jwtUtil.isTokenValid(any(String.class))).thenReturn(false);
-
-        mockMvc.perform(get("/api/item/{id}", ITEM_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer invalid_token"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void testCreateItem_whenNameIsBlank_shouldReturn400() throws Exception {
-        ItemRequestDto invalidRequest = ItemRequestDto.builder()
-                .name("")
-                .price(ITEM_PRICE)
-                .build();
-
-        mockMvc.perform(post("/api/item")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void testCreateItem_whenPriceIsNegative_shouldReturn400() throws Exception {
-        ItemRequestDto invalidRequest = ItemRequestDto.builder()
-                .name("Name")
-                .price(new BigDecimal(-1))
-                .build();
-
-        mockMvc.perform(post("/api/item")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 }

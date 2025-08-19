@@ -69,7 +69,6 @@ class OrderServiceUnitTest {
     private static final Long USER_ID = 100L;
     private static final Long ITEM_ID_1 = 10L;
     private static final Long ITEM_ID_2 = 20L;
-    private static final String TOKEN = "Bearer test-token";
     private static final String USER_NAME = "Test User";
 
     @BeforeAll
@@ -141,16 +140,16 @@ class OrderServiceUnitTest {
         when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
                 .thenReturn(Arrays.asList(item1, item2));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        OrderResponseDto result = orderService.addOrder(orderCreateDto, TOKEN, USER_ID);
+        OrderResponseDto result = orderService.addOrder(orderCreateDto, USER_ID);
 
         assertEquals(orderCreateDto.getStatus(), result.getStatus());
         assertEquals(orderCreateDto.getOrderItems().size(), result.getOrderItems().size());
         assertEquals(userResponseDto, result.getUser());
         verify(itemRepository).findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2));
         verify(orderRepository).save(any(Order.class));
-        verify(userServiceClient).getUserById(USER_ID, TOKEN);
+        verify(userServiceClient).getUserById(USER_ID);
     }
 
     @Test
@@ -158,7 +157,7 @@ class OrderServiceUnitTest {
         when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
                 .thenReturn(Collections.singletonList(item1));
 
-        assertThatThrownBy(() -> orderService.addOrder(orderCreateDto, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.addOrder(orderCreateDto, USER_ID))
                 .isInstanceOf(ItemNotFoundException.class)
                 .hasMessageContaining("Some items in order were not found");
 
@@ -169,28 +168,28 @@ class OrderServiceUnitTest {
     @Test
     void getOrderById_WhenOrderExists_ShouldReturnOrder() {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
-        when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        OrderResponseDto result = orderService.getOrderById(ORDER_ID, TOKEN, USER_ID);
+        OrderResponseDto result = orderService.getOrderById(ORDER_ID, USER_ID);
 
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(ORDER_ID);
         assertThat(result.getOrderItems().getFirst().getName())
                 .isEqualTo(order.getOrderItems().getFirst().getItem().getName());
         verify(orderRepository).findById(ORDER_ID);
-        verify(userServiceClient).getUserById(USER_ID, TOKEN);
+        verify(userServiceClient).getUserById(USER_ID);
     }
 
     @Test
     void getOrderById_WhenOrderNotFound_ShouldThrowOrderNotFoundException() {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.getOrderById(ORDER_ID, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrderById(ORDER_ID, USER_ID))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessage("Order with id " + ORDER_ID + " was not found");
 
         verify(orderRepository).findById(ORDER_ID);
-        verify(userServiceClient, never()).getUserById(any(), any());
+        verify(userServiceClient, never()).getUserById(any());
     }
 
     @Test
@@ -204,7 +203,7 @@ class OrderServiceUnitTest {
 
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(orderWithDifferentUser));
 
-        assertThatThrownBy(() -> orderService.getOrderById(ORDER_ID, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrderById(ORDER_ID, USER_ID))
                 .isInstanceOf(OrderAccessDeniedException.class)
                 .hasMessage("You are only allowed to access your own orders");
 
@@ -221,15 +220,15 @@ class OrderServiceUnitTest {
                 .build();
 
         when(orderRepository.findOrdersByIdIn(orderIds)).thenReturn(Arrays.asList(order, order2));
-        when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        List<OrderResponseDto> result = orderService.getOrdersByIds(orderIds, TOKEN, USER_ID);
+        List<OrderResponseDto> result = orderService.getOrdersByIds(orderIds, USER_ID);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getId()).isEqualTo(ORDER_ID);
         assertThat(result.get(1).getId()).isEqualTo(2L);
         verify(orderRepository).findOrdersByIdIn(orderIds);
-        verify(userServiceClient).getUserById(USER_ID, TOKEN);
+        verify(userServiceClient).getUserById(USER_ID);
     }
 
     @Test
@@ -237,7 +236,7 @@ class OrderServiceUnitTest {
         List<Long> orderIds = Arrays.asList(ORDER_ID, 2L);
         when(orderRepository.findOrdersByIdIn(orderIds)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> orderService.getOrdersByIds(orderIds, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrdersByIds(orderIds, USER_ID))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessageContaining("None of the orders with ids");
 
@@ -249,22 +248,22 @@ class OrderServiceUnitTest {
         String status = "NEW";
         when(orderRepository.findOrdersByStatusAndUserId(OrderStatus.NEW, USER_ID))
                 .thenReturn(Collections.singletonList(order));
-        when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        List<OrderResponseDto> result = orderService.getOrdersByStatus(status, TOKEN, USER_ID);
+        List<OrderResponseDto> result = orderService.getOrdersByStatus(status, USER_ID);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getId()).isEqualTo(ORDER_ID);
         assertThat(result.getFirst().getStatus()).isEqualTo(OrderStatus.NEW);
         verify(orderRepository).findOrdersByStatusAndUserId(OrderStatus.NEW, USER_ID);
-        verify(userServiceClient).getUserById(USER_ID, TOKEN);
+        verify(userServiceClient).getUserById(USER_ID);
     }
 
     @Test
     void getOrdersByStatus_WhenInvalidStatus_ShouldThrowIllegalOrderStatusException() {
         String invalidStatus = "INVALID_STATUS";
 
-        assertThatThrownBy(() -> orderService.getOrdersByStatus(invalidStatus, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrdersByStatus(invalidStatus, USER_ID))
                 .isInstanceOf(IllegalOrderStatusException.class)
                 .hasMessageContaining("Illegal order status INVALID_STATUS");
 
@@ -277,7 +276,7 @@ class OrderServiceUnitTest {
         when(orderRepository.findOrdersByStatusAndUserId(OrderStatus.PROCESSING, USER_ID))
                 .thenReturn(List.of());
 
-        assertThatThrownBy(() -> orderService.getOrdersByStatus(status, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrdersByStatus(status, USER_ID))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessageContaining("None of the orders with status PROCESSING were found");
 
@@ -294,23 +293,23 @@ class OrderServiceUnitTest {
 
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(updatedOrder);
-        when(userServiceClient.getUserById(USER_ID, TOKEN)).thenReturn(userResponseDto);
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        OrderResponseDto result = orderService.updateOrder(ORDER_ID, orderUpdateDto, TOKEN, USER_ID);
+        OrderResponseDto result = orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID);
 
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(ORDER_ID);
         assertThat(result.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         verify(orderRepository).findById(ORDER_ID);
         verify(orderRepository).save(any(Order.class));
-        verify(userServiceClient).getUserById(USER_ID, TOKEN);
+        verify(userServiceClient).getUserById(USER_ID);
     }
 
     @Test
     void updateOrder_WhenOrderNotFound_ShouldThrowOrderNotFoundException() {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.updateOrder(ORDER_ID, orderUpdateDto, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessage("Order with id " + ORDER_ID + " was not found");
 
@@ -329,7 +328,7 @@ class OrderServiceUnitTest {
 
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(orderWithDifferentUser));
 
-        assertThatThrownBy(() -> orderService.updateOrder(ORDER_ID, orderUpdateDto, TOKEN, USER_ID))
+        assertThatThrownBy(() -> orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID))
                 .isInstanceOf(OrderAccessDeniedException.class)
                 .hasMessage("You are only allowed to access your own orders");
 

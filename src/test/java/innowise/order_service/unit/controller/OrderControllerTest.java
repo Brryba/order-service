@@ -12,23 +12,15 @@ import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.exception.order.OrderNotFoundException;
-import innowise.order_service.security.JwtAuthenticationFilter;
-import innowise.order_service.security.JwtUtil;
-import innowise.order_service.security.SecurityConfig;
 import innowise.order_service.service.OrderService;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -51,22 +43,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = {
         OrderController.class,
-        ExceptionController.class,
-        JwtAuthenticationFilter.class,
-        SecurityConfig.class
+        ExceptionController.class
 })
 @AutoConfigureMockMvc
-@EnableWebMvc
-@ExtendWith(MockitoExtension.class)
 public class OrderControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private OrderService orderService;
-
-    @MockitoBean
-    private JwtUtil jwtUtil;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -78,7 +63,7 @@ public class OrderControllerTest {
     private static final long ORDER_ID = 1;
     private static final OrderStatus ORDER_STATUS = OrderStatus.NEW;
     private static final long USER_ID = 1;
-    private static final String MOCK_TOKEN = "mockToken";
+    private static final String USER_ID_HEADER = "X-User-Id";
 
     @BeforeAll
     static void setup() {
@@ -123,19 +108,13 @@ public class OrderControllerTest {
                 .build();
     }
 
-    @BeforeEach
-    void beforeEach() {
-        when(jwtUtil.isTokenValid(any(String.class))).thenReturn(true);
-        when(jwtUtil.getUserIdFromToken(MOCK_TOKEN)).thenReturn(USER_ID);
-    }
-
     @Test
     void testCreateItem_whenValidRequest_201() throws Exception {
-        when(orderService.addOrder(any(OrderCreateDto.class), eq("Bearer " + MOCK_TOKEN), eq(USER_ID)))
+        when(orderService.addOrder(any(OrderCreateDto.class), eq(USER_ID)))
                 .thenReturn(orderResponseDto);
 
         mockMvc.perform(post("/api/order")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .header(USER_ID_HEADER, "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderCreateDto)))
                 .andDo(print())
@@ -149,20 +128,20 @@ public class OrderControllerTest {
     @Test
     void testCreateItem_whenInvalidRequestParams_shouldReturn_400() throws Exception {
         mockMvc.perform(post("/api/order")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .header(USER_ID_HEADER, "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString("no params"))).
                 andExpect(status().isBadRequest());
 
-        verify(orderService, never()).addOrder(any(OrderCreateDto.class), eq("Bearer " + MOCK_TOKEN), eq(USER_ID));
+        verify(orderService, never()).addOrder(any(OrderCreateDto.class), eq(USER_ID));
     }
 
     @Test
     void testGetItem_whenExists_shouldReturn200() throws Exception {
-        when(orderService.getOrderById(ORDER_ID, "Bearer " + MOCK_TOKEN, USER_ID)).thenReturn(orderResponseDto);
+        when(orderService.getOrderById(ORDER_ID, USER_ID)).thenReturn(orderResponseDto);
 
         mockMvc.perform(get("/api/order/{id}", ORDER_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                        .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
@@ -172,11 +151,11 @@ public class OrderControllerTest {
 
     @Test
     void testGetItem_whenNotExists_shouldReturn404() throws Exception {
-        when(orderService.getOrderById(ORDER_ID, "Bearer " + MOCK_TOKEN, USER_ID))
+        when(orderService.getOrderById(ORDER_ID, USER_ID))
                 .thenThrow(new OrderNotFoundException("Item not found"));
 
         mockMvc.perform(get("/api/order/{id}", ORDER_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                        .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isNotFound());
     }
 
@@ -184,33 +163,33 @@ public class OrderControllerTest {
     void testGetItemsByIds_whenExists_shouldReturn200() throws Exception {
         List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
-        when(orderService.getOrdersByIds(ids, "Bearer " + MOCK_TOKEN, USER_ID))
+        when(orderService.getOrdersByIds(ids, USER_ID))
                 .thenReturn(List.of(orderResponseDto));
 
         mockMvc.perform(get("/api/order?ids=1,2,3")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                        .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.[0].id").value(orderResponseDto.getId()));
     }
 
     @Test
     void testGetItemsByStatus_whenExists_shouldReturn200() throws Exception {
-        when(orderService.getOrdersByStatus("NEW", "Bearer " + MOCK_TOKEN, USER_ID))
+        when(orderService.getOrdersByStatus("NEW", USER_ID))
                 .thenReturn(List.of(orderResponseDto));
 
         mockMvc.perform(get("/api/order/status/{status}", OrderStatus.NEW.toString())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                        .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.[0].id").value(orderResponseDto.getId()));
     }
 
     @Test
     void testUpdateItem_whenValid_shouldReturn200() throws Exception {
-        when(orderService.updateOrder(ORDER_ID, orderUpdateDto, "Bearer " + MOCK_TOKEN, USER_ID))
+        when(orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID))
                 .thenReturn(orderResponseDto);
 
         mockMvc.perform(put("/api/order/{id}", ORDER_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .header(USER_ID_HEADER, "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderUpdateDto)))
                 .andExpect(status().isOk())
@@ -223,7 +202,7 @@ public class OrderControllerTest {
     @Test
     void testUpdateItem_whenInvalidBody_shouldReturn400() throws Exception {
         mockMvc.perform(put("/api/order/{id}", ORDER_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN)
+                        .header(USER_ID_HEADER, "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString("invalid body")))
                 .andExpect(status().isBadRequest());
@@ -234,7 +213,7 @@ public class OrderControllerTest {
         doNothing().when(orderService).deleteOrder(ORDER_ID, USER_ID);
 
         mockMvc.perform(delete("/api/order/{id}", ORDER_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                        .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isNoContent());
 
         verify(orderService).deleteOrder(ORDER_ID, USER_ID);
@@ -246,33 +225,33 @@ public class OrderControllerTest {
                 .when(orderService).deleteOrder(ORDER_ID, USER_ID);
 
         mockMvc.perform(delete("/api/order/{id}", ORDER_ID)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + MOCK_TOKEN))
+                        .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isNotFound());
     }
 
 
     @Test
-    void testAllEndpoints_whenNoAuth_shouldReturn401() throws Exception {
+    void testAllEndpoints_whenUserIdHeader_shouldReturn400() throws Exception {
         mockMvc.perform(get("/api/order/{id}", ORDER_ID))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
 
-        mockMvc.perform(get("/api/order/status/", OrderStatus.PROCESSING))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/order/status/new", OrderStatus.PROCESSING))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/api/order?ids=1,2"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(post("/api/order")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderCreateDto)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(put("/api/order/{id}", ORDER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderUpdateDto)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(delete("/api/order/{id}", ORDER_ID))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
     }
 }
