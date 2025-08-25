@@ -1,6 +1,5 @@
 package innowise.order_service.service.kafka;
 
-import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.payment.PaymentResponseDto;
 import innowise.order_service.dto.payment.PaymentStatus;
 import innowise.order_service.entity.OrderStatus;
@@ -18,13 +17,12 @@ public class KafkaConsumerService {
 
     @KafkaListener(topics = "payments", groupId = "order-service-group")
     public void listenGroupFoo(PaymentResponseDto payment) {
-        log.info("Receive {} event from payments topic for {} order. The status is {}",
+        log.info("Received {} event from payments topic for {} order. The status is {}",
                 payment.getEventType(), payment.getOrderId(), payment.getStatus());
 
-        orderService.updateOrder(payment.getOrderId(), OrderUpdateDto.builder()
-                        .status(payment.getStatus() == PaymentStatus.COMPLETED ?
+        orderService.updateOrderStatus(payment.getOrderId(),
+               payment.getStatus() == PaymentStatus.COMPLETED ?
                                 OrderStatus.PAYMENT_RECEIVED :
-                                OrderStatus.PAYMENT_FAILED)
-                .build(), payment.getUserId());
+                                OrderStatus.PAYMENT_FAILED);
     }
 }

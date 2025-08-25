@@ -31,9 +31,6 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-security:
-  jwt-key: ${JWT_KEY}
-
 server:
   port: 80
 

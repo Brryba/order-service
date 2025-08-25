@@ -117,7 +117,6 @@ public class OrderService {
             log.warn("Order with {} id was not found in database", orderId);
             return new OrderNotFoundException("Order with id " + orderId + " was not found");
         });
-        OrderStatus previousOrderStatus = order.getStatus();
 
         log.info("Order {} loaded from database", orderId);
         validateOrderOwner(order, userId);
@@ -126,13 +125,30 @@ public class OrderService {
 
         order = orderRepository.save(order);
 
-        log.info("Order {} updated", orderId);
+        log.info("Order {} updated", order.getId());
+
+        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
 
         if (order.getStatus() == OrderStatus.PAYMENT_WAITING) {
             kafkaProducerService.sendCreatePaymentEvent(order);
         }
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+        return orderResponseDto;
+    }
+
+    @Transactional
+    public void updateOrderStatus(long orderId, OrderStatus orderStatus) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+            log.warn("Order {} was not found in database", orderId);
+            return new OrderNotFoundException("Order with id " + orderId + " was not found");
+        });
+
+        log.info("Order {} loaded from database", orderId);
+
+        order.setStatus(orderStatus);
+
+        order = orderRepository.save(order);
+        log.info("Order {} updated to {} status", orderId, order.getStatus());
     }
 
     @Transactional

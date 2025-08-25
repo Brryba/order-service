@@ -19,7 +19,6 @@ public class KafkaProducerService {
     private static final String TOPIC = "orders";
 
     public void sendCreatePaymentEvent(Order order) {
-
         PaymentRequestDto paymentRequestDto = PaymentRequestDto.builder()
                 .eventType("CREATE_ORDER")
                 .orderId(order.getId())
