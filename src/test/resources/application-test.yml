@@ -1,6 +1,18 @@
-services:
-  user-service:
-    url: http://localhost:${wiremock.server.port}
+spring:
+  application:
+    name: books-service
+  cloud:
+    loadbalancer:
+      ribbon:
+        enabled: false
+    discovery:
+      client:
+        simple:
+          instances:
+            user-service[0]:
+              uri: http://localhost:8081
+            user-service[1]:
+              uri: http://localhost:8082
 
 eureka:
   client:
