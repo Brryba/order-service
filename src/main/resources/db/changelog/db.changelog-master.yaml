@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: /db/changelog/changesets/001-create-orders-table.yaml
+  - include:
+      file: /db/changelog/changesets/002-create-items-table.yaml
+  - include:
+      file: /db/changelog/changesets/003-create-order-items-table.yaml
+  - include:
+      file: /db/changelog/changesets/004-fix-order-status-check-constraint.yaml
