@@ -19,6 +19,7 @@ import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.repository.OrderRepository;
 import innowise.order_service.service.OrderService;
 import innowise.order_service.service.UserServiceClient;
+import innowise.order_service.service.kafka.KafkaProducerService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +56,9 @@ class OrderServiceUnitTest {
 
     @MockitoBean
     private UserServiceClient userServiceClient;
+
+    @MockitoBean
+    private KafkaProducerService kafkaProducerService;
 
     @Autowired
     private OrderService orderService;

@@ -17,6 +17,7 @@ import innowise.order_service.mapper.OrderItemsMapper;
 import innowise.order_service.mapper.OrderMapper;
 import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.repository.OrderRepository;
+import innowise.order_service.service.kafka.KafkaProducerService;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final OrderItemsMapper orderItemsMapper;
     private final UserServiceClient userServiceClient;
+    private final KafkaProducerService kafkaProducerService;
 
     @Transactional
     public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, Long userId) {
@@ -123,9 +125,30 @@ public class OrderService {
 
         order = orderRepository.save(order);
 
-        log.info("Order {} updated", orderId);
+        log.info("Order {} updated", order.getId());
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+
+        if (order.getStatus() == OrderStatus.PAYMENT_WAITING) {
+            kafkaProducerService.sendCreatePaymentEvent(order);
+        }
+
+        return orderResponseDto;
+    }
+
+    @Transactional
+    public void updateOrderStatus(long orderId, OrderStatus orderStatus) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+            log.warn("Order {} was not found in database", orderId);
+            return new OrderNotFoundException("Order with id " + orderId + " was not found");
+        });
+
+        log.info("Order {} loaded from database", orderId);
+
+        order.setStatus(orderStatus);
+
+        order = orderRepository.save(order);
+        log.info("Order {} updated to {} status", orderId, order.getStatus());
     }
 
     @Transactional

@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 5
+      author: Yury Brazgunou
+      changes:
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT check_order_status
+        - sql:
+            sql: ALTER TABLE orders ADD CONSTRAINT check_order_status CHECK (status IN ('NEW', 'PAYMENT_WAITING', 'PAYMENT_RECEIVED', 'PROCESSING', 'DELIVERED', 'CANCELLED', 'PAYMENT_FAILED'))
