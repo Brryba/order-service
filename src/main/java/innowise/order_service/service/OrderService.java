@@ -11,6 +11,7 @@ import innowise.order_service.entity.OrderItem;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.exception.order.IllegalOrderStatusException;
+import innowise.order_service.exception.order.IllegalStatusChangeException;
 import innowise.order_service.exception.order.OrderNotFoundException;
 import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.mapper.OrderItemsMapper;
@@ -121,12 +122,24 @@ public class OrderService {
         log.info("Order {} loaded from database", orderId);
         validateOrderOwner(order, userId);
 
+        if (!isStatusChangeAllowed(order.getStatus(), orderUpdateDto.getStatus())) {
+            log.warn("Forbidden status change from {} to {}", order.getStatus(), orderUpdateDto.getStatus());
+            throw new IllegalStatusChangeException("You are not allowed to change status from "
+                    + order.getStatus() + " to " + orderUpdateDto.getStatus());
+        }
+
         orderMapper.updateOrder(order, orderUpdateDto);
+        if (orderUpdateDto.getOrderItems() != null && !orderUpdateDto.getOrderItems().isEmpty()) {
+            if (order.getStatus() == OrderStatus.NEW || order.getStatus() == OrderStatus.PAYMENT_FAILED) {
+                setOrderItems(order, orderUpdateDto.getOrderItems());
+            } else {
+                log.warn("Forbidden order items change for {} status", order.getStatus());
+                throw new IllegalStatusChangeException("You are only allowed to update status of NEW order");
+            }
+        }
 
         order = orderRepository.save(order);
-
         log.info("Order {} updated", order.getId());
-
         OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
 
         if (order.getStatus() == OrderStatus.PAYMENT_WAITING) {
@@ -163,6 +176,19 @@ public class OrderService {
         log.info("Order {} deleted", orderId);
     }
 
+    private boolean isStatusChangeAllowed(OrderStatus oldStatus, OrderStatus newStatus) {
+        if (oldStatus == newStatus) {
+            return true;
+        }
+        return switch (oldStatus) {
+            case NEW -> newStatus == OrderStatus.PAYMENT_WAITING || newStatus == OrderStatus.CANCELLED;
+            case PAYMENT_FAILED -> newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.PAYMENT_WAITING;
+            case PAYMENT_RECEIVED -> newStatus == OrderStatus.PROCESSING;
+            case PROCESSING -> newStatus == OrderStatus.DELIVERED;
+            default -> false;
+        };
+    }
+
     private void validateOrderOwner(Order order, Long userId) throws OrderAccessDeniedException {
         if (order.getUserId() != userId) {
             log.warn("User {} can not see the order {}", userId, order.getId());
@@ -189,7 +215,12 @@ public class OrderService {
                     itemIdTotalQuantityMap.size() + " items, Found: " + items.size());
         }
 
-        order.setOrderItems(new ArrayList<>());
+        if (order.getOrderItems() == null) {
+            order.setOrderItems(new ArrayList<>());
+        } else {
+            order.getOrderItems().clear();
+        }
+
         for (Item item : items) {
             OrderItem orderItem = OrderItem.builder()
                     .quantity(itemIdTotalQuantityMap.get(item.getId()))
