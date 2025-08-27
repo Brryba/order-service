@@ -14,6 +14,7 @@ import innowise.order_service.entity.Item;
 import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
+import innowise.order_service.exception.order.IllegalStatusChangeException;
 import innowise.order_service.exception.order.OrderNotFoundException;
 import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.repository.ItemRepository;
@@ -92,7 +93,7 @@ public class OrderIntegrationTest {
                 .build();
 
         orderUpdateDto = OrderUpdateDto.builder()
-                .status(OrderStatus.PROCESSING)
+                .status(OrderStatus.PAYMENT_WAITING)
                 .build();
 
         userResponseDto = UserResponseDto.builder()

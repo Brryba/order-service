@@ -11,6 +11,7 @@ import innowise.order_service.entity.OrderItem;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.exception.order.IllegalOrderStatusException;
+import innowise.order_service.exception.order.IllegalStatusChangeException;
 import innowise.order_service.exception.order.OrderNotFoundException;
 import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.mapper.OrderItemsMapperImpl;
@@ -21,6 +22,7 @@ import innowise.order_service.service.OrderService;
 import innowise.order_service.service.UserServiceClient;
 import innowise.order_service.service.kafka.KafkaProducerService;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +41,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -100,10 +103,6 @@ class OrderServiceUnitTest {
                 .orderItems(orderItemDtos)
                 .build();
 
-        orderUpdateDto = OrderUpdateDto.builder()
-                .status(OrderStatus.PROCESSING)
-                .build();
-
         item1 = Item.builder()
                 .id(ITEM_ID_1)
                 .name("Item 1")
@@ -136,6 +135,13 @@ class OrderServiceUnitTest {
         userResponseDto = UserResponseDto.builder()
                 .id(USER_ID)
                 .name(USER_NAME)
+                .build();
+    }
+
+    @BeforeEach
+    void setUp() {
+        orderUpdateDto = OrderUpdateDto.builder()
+                .status(OrderStatus.CANCELLED)
                 .build();
     }
 
@@ -292,7 +298,7 @@ class OrderServiceUnitTest {
         Order updatedOrder = Order.builder()
                 .id(ORDER_ID)
                 .userId(USER_ID)
-                .status(OrderStatus.DELIVERED)
+                .status(OrderStatus.PAYMENT_WAITING)
                 .build();
 
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
@@ -303,10 +309,20 @@ class OrderServiceUnitTest {
 
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(ORDER_ID);
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.PAYMENT_WAITING);
         verify(orderRepository).findById(ORDER_ID);
         verify(orderRepository).save(any(Order.class));
         verify(userServiceClient).getUserById(USER_ID);
+    }
+
+    @Test
+    void testUpdateOrderStatus_NotAllowsWrongStatusChange() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+
+        orderUpdateDto.setStatus(OrderStatus.PAYMENT_FAILED);
+        assertThrows(IllegalStatusChangeException.class, () -> {
+            orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID);
+        });
     }
 
     @Test
