@@ -16,7 +16,7 @@ public class KafkaConsumerService {
     private final OrderService orderService;
 
     @KafkaListener(topics = "payments", groupId = "order-service-group")
-    public void listenGroupFoo(PaymentResponseDto payment) {
+    public void listenPaymentCreatedEvent(PaymentResponseDto payment) {
         log.info("Received {} event from payments topic for {} order. The status is {}",
                 payment.getEventType(), payment.getOrderId(), payment.getStatus());
 

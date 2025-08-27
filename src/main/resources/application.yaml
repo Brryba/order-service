@@ -19,7 +19,7 @@ spring:
         order_deletes: true
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP}
     consumer:
       group-id: order-service-group
       auto-offset-reset: earliest

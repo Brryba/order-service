@@ -8,6 +8,7 @@ import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
+import innowise.order_service.dto.payment.PaymentRequestDto;
 import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.entity.Order;
@@ -25,7 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -42,6 +45,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -60,6 +67,9 @@ public class OrderIntegrationTest {
 
     @Autowired
     private PostgreSQLContainer<?> postgresContainer;
+
+    @MockitoBean
+    private KafkaTemplate<String, PaymentRequestDto> kafkaOrderCreateEventTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -178,7 +188,7 @@ public class OrderIntegrationTest {
     void testUpdateOrder_failsWhenUserIsNotOrderOwner() {
         saveItem();
 
-        long orderId = orderService.addOrder(orderCreateDto,  USER_ID).getId();
+        long orderId = orderService.addOrder(orderCreateDto, USER_ID).getId();
 
         assertThrows(OrderAccessDeniedException.class, () ->
                 orderService.updateOrder(orderId, orderUpdateDto, 99999L));
@@ -194,5 +204,19 @@ public class OrderIntegrationTest {
 
         Optional<Order> foundOrder = orderRepository.findById(orderId);
         assertTrue(foundOrder.isEmpty());
+    }
+
+    @Test
+    @Transactional
+    void testKafkaProducerSendsEvent() {
+        saveItem();
+        long orderId = orderService.addOrder(orderCreateDto, USER_ID).getId();
+        OrderUpdateDto updateDto = OrderUpdateDto
+                .builder()
+                .status(OrderStatus.PAYMENT_WAITING)
+                .build();
+        orderService.updateOrder(orderId, updateDto, USER_ID);
+
+        verify(kafkaOrderCreateEventTemplate, times(1)).send(eq("orders"), any(PaymentRequestDto.class));
     }
 }
