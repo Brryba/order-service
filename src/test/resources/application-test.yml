@@ -12,9 +12,6 @@ spring:
             user-service[0]:
               uri: http://localhost:8081
 
-  kafka:
-    bootstrap-servers: http://
-
 eureka:
   client:
     enabled: false
