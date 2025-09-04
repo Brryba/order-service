@@ -44,3 +44,7 @@ eureka:
   client:
     webclient:
       enabled: false
+
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:}
