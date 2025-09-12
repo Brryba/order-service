@@ -9,6 +9,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
+import java.math.BigDecimal;
+
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import static org.mapstruct.ReportingPolicy.ERROR;
 
@@ -22,7 +24,7 @@ public interface OrderMapper {
 
     @Mapping(target = "user", source = "userResponseDto")
     @Mapping(target = "id", source = "order.id")
-    OrderResponseDto toOrderResponseDto(Order order, UserResponseDto userResponseDto);
+    OrderResponseDto toOrderResponseDto(Order order, UserResponseDto userResponseDto,  BigDecimal totalAmount);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "creationDate", ignore = true)

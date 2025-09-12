@@ -24,5 +24,6 @@ public interface OrderItemsMapper {
 
     @Mapping(target = "itemId", source = "item.id")
     @Mapping(target = "name", source = "item.name")
+    @Mapping(target = "price", source = "item.price")
     OrderItemResponseDto toOrderItemResponseDto(OrderItem orderItem);
 }

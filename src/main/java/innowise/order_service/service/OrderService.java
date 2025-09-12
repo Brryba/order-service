@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +58,7 @@ public class OrderService {
         order = orderRepository.save(order);
         log.info("Order {} created", order.getId());
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId), countTotalAmount(order));
     }
 
     public OrderResponseDto getOrderById(Long orderId, Long userId) {
@@ -66,7 +67,7 @@ public class OrderService {
         log.info("Order {} loaded", orderId);
         orderValidator.validateOrderOwner(order, userId);
 
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId), countTotalAmount(order));
     }
 
     public List<OrderResponseDto> getOrdersByIds(List<Long> ids, Long userId) {
@@ -84,7 +85,7 @@ public class OrderService {
 
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
         return orders.stream()
-                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto, countTotalAmount(order)))
                 .toList();
     }
 
@@ -99,7 +100,7 @@ public class OrderService {
         log.info("{} Orders loaded from database for user {}", orders.size(), userId);
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
         return orders.stream()
-                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto, countTotalAmount(order)))
                 .toList();
     }
 
@@ -122,7 +123,7 @@ public class OrderService {
 
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
         return orders.stream()
-                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto, countTotalAmount(order)))
                 .toList();
     }
 
@@ -140,10 +141,10 @@ public class OrderService {
 
         order = orderRepository.save(order);
         log.info("Order {} updated", order.getId());
-        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+        OrderResponseDto orderResponseDto = orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId), countTotalAmount(order));
 
         if (order.getStatus() == OrderStatus.PAYMENT_WAITING) {
-            kafkaProducerService.sendCreatePaymentEvent(order);
+            kafkaProducerService.sendCreatePaymentEvent(order, countTotalAmount(order));
         }
 
         return orderResponseDto;
@@ -171,7 +172,7 @@ public class OrderService {
 
         order = orderRepository.save(order);
         log.info("Order {} updated", order.getId());
-        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId), countTotalAmount(order));
     }
 
     @Transactional
@@ -217,6 +218,16 @@ public class OrderService {
         }
     }
 
+    private BigDecimal countTotalAmount(Order order) {
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (OrderItem orderItem : order.getOrderItems()) {
+            totalAmount = totalAmount.add(orderItem.getItem().getPrice()
+                    .multiply(BigDecimal.valueOf(orderItem.getQuantity())));
+        }
+        log.info("Order {} total amount is {}", order.getId(), totalAmount);
+        return totalAmount;
+    }
+
     private void setOrderItems(Order order, List<OrderItemRequestDto> orderItemDtos) {
         Map<Long, Integer> itemIdTotalQuantityMap = orderItemDtos.stream()
                 .collect(Collectors.toMap(
@@ -250,7 +261,6 @@ public class OrderService {
                     .build();
             order.getOrderItems().add(orderItem);
         }
-
         log.info("Successfully linked {} items to order", items.size());
     }
 }

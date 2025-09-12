@@ -42,11 +42,9 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.InstanceOfAssertFactories.predicate;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -168,6 +166,27 @@ class OrderServiceUnitTest {
         verify(itemRepository).findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2));
         verify(orderRepository).save(any(Order.class));
         verify(userServiceClient).getUserById(USER_ID);
+    }
+
+    @Test
+    void testOrderTotalAmountCalculated() {
+        when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
+                .thenReturn(Arrays.asList(item1, item2));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
+
+        OrderResponseDto result = orderService.addOrder(orderCreateDto, USER_ID);
+        List<OrderItemRequestDto> orderItemDtos = Arrays.asList(
+                OrderItemRequestDto.builder().itemId(ITEM_ID_1).quantity(2).build(),
+                OrderItemRequestDto.builder().itemId(ITEM_ID_2).quantity(1).build()
+        );
+
+        BigDecimal resultAmount = result.getOrderItems().getFirst().getPrice()
+                .multiply(BigDecimal.valueOf(result.getOrderItems().getFirst().getQuantity()));
+        resultAmount = resultAmount.add(result.getOrderItems().getLast().getPrice()
+                .multiply(BigDecimal.valueOf(result.getOrderItems().getLast().getQuantity())));
+
+        assertEquals(resultAmount, result.getTotalAmount());
     }
 
     @Test

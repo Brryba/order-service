@@ -126,7 +126,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getId()));
+                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
@@ -150,7 +150,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getId()));
+                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
@@ -221,7 +221,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getId()));
+                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
@@ -237,7 +237,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getId()));
+                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
