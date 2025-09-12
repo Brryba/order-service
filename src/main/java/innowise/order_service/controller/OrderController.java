@@ -34,8 +34,6 @@ import java.util.List;
 public class OrderController {
     private final OrderService orderService;
 
-    private final String USER_ID_TOKEN = "X-User-Id";
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponseDto addOrder(@Valid @RequestBody OrderCreateDto orderRequestDto,

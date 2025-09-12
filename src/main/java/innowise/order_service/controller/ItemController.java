@@ -40,7 +40,7 @@ public class ItemController {
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public ItemPageResponseDto getAllItemsOnPage(@RequestParam(defaultValue = "0") @NonNegative Integer page,
+    public ItemPageResponseDto getAllItemsOnPage(@RequestParam(defaultValue = "10") @NonNegative Integer page,
                                                  @RequestParam(defaultValue = "10") @Positive Integer size) {
             return itemService.getAllItemsOnPage(page, size);
     }
