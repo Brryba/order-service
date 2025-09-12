@@ -12,4 +12,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findOrdersByIdIn(List<Long> orderIds);
 
     List<Order> findOrdersByStatusAndUserId(OrderStatus status, long userId);
+
+    boolean existsOrderByStatusAndUserId(OrderStatus status, long userId);
 }
