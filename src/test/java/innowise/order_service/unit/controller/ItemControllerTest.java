@@ -2,6 +2,7 @@ package innowise.order_service.unit.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import innowise.order_service.controller.ItemController;
+import innowise.order_service.dto.item.ItemPageResponseDto;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.exception.item.ItemNotFoundException;
@@ -17,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -105,6 +107,23 @@ public class ItemControllerTest {
 
         mockMvc.perform(get("/api/item/{id}", ITEM_ID))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testGetItemPage_whenExists_shouldReturn200() throws Exception {
+        int PAGE = 0;
+        int SIZE = 2;
+        int LAST_PAGE = 3;
+        when(itemService.getAllItemsOnPage(PAGE, SIZE)).thenReturn(ItemPageResponseDto.builder()
+                .pageNumber(PAGE)
+                .lastPage(LAST_PAGE)
+                .items(List.of(itemResponseDto))
+                .build());
+
+        mockMvc.perform(get("/api/item?page=" + PAGE + "&size=" + SIZE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pageNumber").value(PAGE))
+                .andExpect(jsonPath("$.lastPage").value(LAST_PAGE));
     }
 
     @Test

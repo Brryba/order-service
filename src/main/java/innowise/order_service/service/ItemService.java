@@ -1,5 +1,6 @@
 package innowise.order_service.service;
 
+import innowise.order_service.dto.item.ItemPageResponseDto;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.entity.Item;
@@ -9,8 +10,14 @@ import innowise.order_service.mapper.ItemMapper;
 import innowise.order_service.repository.ItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +42,24 @@ public class ItemService {
         Item item = loadItemFromDatabase(id);
 
         return itemMapper.toItemResponseDto(item);
+    }
+
+    public ItemPageResponseDto getAllItemsOnPage(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<Item> items = itemRepository.findAll(pageable);
+
+        if (items.getContent().isEmpty()) {
+            log.warn("No items found for on {} page with {} size", page, size);
+            throw new ItemNotFoundException("There are no items at the page");
+        }
+        log.info("Loaded {} items for {} page with {} size", items.getContent().size(), page, size);
+
+        List<ItemResponseDto> foundItems = items.getContent().stream().map(itemMapper::toItemResponseDto).toList();
+        return ItemPageResponseDto.builder()
+                .items(foundItems)
+                .pageNumber(page)
+                .lastPage(items.getTotalPages() - 1)
+                .build();
     }
 
     @Transactional

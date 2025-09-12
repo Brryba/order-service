@@ -1,10 +1,12 @@
 package innowise.order_service.integration;
 
 import innowise.order_service.configuration.TestcontainersConfiguration;
+import innowise.order_service.dto.item.ItemPageResponseDto;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.exception.item.DuplicateItemNameException;
+import innowise.order_service.exception.item.ItemNotFoundException;
 import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.service.ItemService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +22,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -59,6 +63,50 @@ public class ItemIntegrationTest {
         Optional<Item> foundItem = itemRepository.findById(createdItem.getId());
         assertTrue(foundItem.isPresent());
         assertEquals(createdItem.getName(), foundItem.get().getName());
+    }
+
+    @Test
+    @Transactional
+    void itemPagination_whenItemsPresent_ShouldReturnPage() {
+        int PAGE_SIZE = 2;
+
+        itemRequestDto.setName(ITEM_NAME + "0");
+        itemService.createItem(itemRequestDto);
+        itemRequestDto.setName(ITEM_NAME + "1");
+        itemService.createItem(itemRequestDto);
+        itemRequestDto.setName(ITEM_NAME);
+        itemService.createItem(itemRequestDto);
+
+        ItemPageResponseDto page0 = itemService.getAllItemsOnPage(0, PAGE_SIZE);
+        assertAll(() -> {
+            assertFalse(page0.getItems().isEmpty());
+            assertEquals(0, page0.getPageNumber());
+            assertEquals(1, page0.getLastPage());
+            assertEquals(PAGE_SIZE, page0.getItems().size());
+        });
+
+        ItemPageResponseDto page1 = itemService.getAllItemsOnPage(1, PAGE_SIZE);
+        assertAll(() -> {
+            assertFalse(page1.getItems().isEmpty());
+            assertEquals(1, page1.getPageNumber());
+            assertEquals(1, page1.getLastPage());
+            assertEquals(1, page1.getItems().size());
+        });
+    }
+
+    @Test
+    @Transactional
+    void itemPagination_whenPageNotPresent_ShouldThrowException() {
+        int PAGE_SIZE = 2;
+
+        itemRequestDto.setName(ITEM_NAME + "0");
+        itemService.createItem(itemRequestDto);
+        itemRequestDto.setName(ITEM_NAME + "1");
+        itemService.createItem(itemRequestDto);
+        itemRequestDto.setName(ITEM_NAME);
+        itemService.createItem(itemRequestDto);
+
+        assertThrows(ItemNotFoundException.class, () -> itemService.getAllItemsOnPage(10, 2));
     }
 
     @Test

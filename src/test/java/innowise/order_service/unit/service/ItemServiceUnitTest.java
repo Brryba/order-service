@@ -1,5 +1,6 @@
 package innowise.order_service.unit.service;
 
+import innowise.order_service.dto.item.ItemPageResponseDto;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.entity.Item;
@@ -14,14 +15,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -108,6 +116,23 @@ class ItemServiceUnitTest {
                 .hasMessage("Item with id " + ITEM_ID + " not found");
 
         verify(itemRepository).findById(ITEM_ID);
+    }
+
+    @Test
+    void getItemsOnPage_WhenItemExists_ShouldReturnItems() {
+        Pageable pageable = PageRequest.of(0, 2, Sort.by("id").descending());
+        when(itemRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(item)));
+
+        ItemPageResponseDto result = itemService.getAllItemsOnPage(0, 2);
+        assertThat(result.getItems()).hasSize(1);
+    }
+
+    @Test
+    void getItemsOnPage_WhenNoItems_ShouldThrowException() {
+        Pageable pageable = PageRequest.of(0, 2, Sort.by("id").descending());
+        when(itemRepository.findAll(pageable)).thenReturn(Page.empty());
+
+        assertThrows(ItemNotFoundException.class, () -> itemService.getAllItemsOnPage(0, 2));
     }
 
     @Test

@@ -1,10 +1,13 @@
 package innowise.order_service.controller;
 
+import innowise.order_service.dto.item.ItemPageResponseDto;
 import innowise.order_service.dto.item.ItemRequestDto;
 import innowise.order_service.dto.item.ItemResponseDto;
 import innowise.order_service.service.ItemService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.checkerframework.checker.index.qual.NonNegative;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,9 +38,17 @@ public class ItemController {
         return itemService.getItemById(id);
     }
 
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public ItemPageResponseDto getAllItemsOnPage(@RequestParam(defaultValue = "10") @NonNegative Integer page,
+                                                 @RequestParam(defaultValue = "10") @Positive Integer size) {
+            return itemService.getAllItemsOnPage(page, size);
+    }
+
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public ItemResponseDto updateItem(@PathVariable Long id, @Valid @RequestBody ItemRequestDto itemRequestDto) {
+    public ItemResponseDto updateItem(@PathVariable Long id,
+                                      @Valid @RequestBody ItemRequestDto itemRequestDto) {
         return itemService.updateItem(itemRequestDto, id);
     }
 
