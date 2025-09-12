@@ -88,6 +88,21 @@ public class OrderService {
                 .toList();
     }
 
+    public List<OrderResponseDto> getAllUserOrders(Long userId) {
+        List<Order> orders = orderRepository.findOrdersByUserId(userId);
+
+        if (orders == null || orders.isEmpty()) {
+            log.warn("Orders for user {} were not found in database", userId);
+            throw new OrderNotFoundException("You haven't created any orders yet");
+        }
+
+        log.info("{} Orders loaded from database for user {}", orders.size(), userId);
+        UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
+        return orders.stream()
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto))
+                .toList();
+    }
+
     public List<OrderResponseDto> getOrdersByStatus(String status, Long userId) {
         OrderStatus orderStatus;
         try {

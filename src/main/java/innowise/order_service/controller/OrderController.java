@@ -47,11 +47,17 @@ public class OrderController {
         return orderService.getOrderById(id, userId);
     }
 
-    @GetMapping()
+    @GetMapping(params = "ids")
     @ResponseStatus(HttpStatus.OK)
     public List<OrderResponseDto> getOrdersByIds(@RequestParam List<Long> ids,
                                                  @RequestHeader("X-User-Id") Long userId) {
         return orderService.getOrdersByIds(ids, userId);
+    }
+
+    @GetMapping()
+    @ResponseStatus(HttpStatus.OK)
+    public List<OrderResponseDto> getOrders(@RequestHeader("X-User-Id") Long userId) {
+        return orderService.getAllUserOrders(userId);
     }
 
     @GetMapping("/status/{status}")

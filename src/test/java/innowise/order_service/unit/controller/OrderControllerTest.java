@@ -6,6 +6,7 @@ import innowise.order_service.controller.OrderController;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
+import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.order_items.OrderItemResponseDto;
 import innowise.order_service.dto.user.UserResponseDto;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -162,6 +164,27 @@ public class OrderControllerTest {
     }
 
     @Test
+    void testGetAllUserOrders_whenExists_shouldReturn200() throws Exception {
+        when(orderService.getAllUserOrders(USER_ID))
+                .thenReturn(List.of(orderResponseDto));
+
+        mockMvc.perform(get("/api/order")
+                        .header(USER_ID_HEADER, "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.[0].user.id").value(USER_ID));
+    }
+
+    @Test
+    void testGetAllUserOrders_whenDontExist_shouldReturn404() throws Exception {
+        doThrow(new OrderNotFoundException("Orders were not found in database"))
+                .when(orderService).getAllUserOrders(USER_ID);
+
+        mockMvc.perform(get("/api/order", ORDER_ID)
+                        .header(USER_ID_HEADER, "1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void testGetItemsByIds_whenExists_shouldReturn200() throws Exception {
         List<Long> ids = Arrays.asList(1L, 2L, 3L);
 
@@ -194,6 +217,22 @@ public class OrderControllerTest {
                         .header(USER_ID_HEADER, "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderUpdateDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
+                .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
+                .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
+                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getId()));
+    }
+
+    @Test
+    void testPatchItem_whenValidData_shouldReturn200() throws Exception {
+        when(orderService.patchCreatingOrder(eq(ORDER_ID), any(), eq(USER_ID)))
+                .thenReturn(orderResponseDto);
+
+        mockMvc.perform(patch("/api/order/{id}", ORDER_ID)
+                        .header(USER_ID_HEADER, "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of(OrderItemPatchDto.builder().itemId(1L).quantity(2).build()))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))

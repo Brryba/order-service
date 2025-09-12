@@ -232,6 +232,27 @@ class OrderServiceUnitTest {
     }
 
     @Test
+    void getAllUserOrders() {
+        when(orderRepository.findOrdersByUserId(USER_ID)).thenReturn(List.of(order));
+        when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
+
+        List<OrderResponseDto> result = orderService.getAllUserOrders(USER_ID);
+        assertThat(result).hasSize(1);
+        assertEquals(USER_ID, result.getFirst().getUserId());
+    }
+
+    @Test
+    void getAllUserOrders_WhenOrdersNotFound_ShouldThrowOrderNotFoundException() {
+        List<Long> orderIds = Arrays.asList(ORDER_ID, 2L);
+        when(orderRepository.findOrdersByIdIn(orderIds)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> orderService.getAllUserOrders(USER_ID))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        verify(orderRepository).findOrdersByUserId(USER_ID);
+    }
+
+    @Test
     void getOrdersByIds_WhenOrdersNotFound_ShouldThrowOrderNotFoundException() {
         List<Long> orderIds = Arrays.asList(ORDER_ID, 2L);
         when(orderRepository.findOrdersByIdIn(orderIds)).thenReturn(List.of());
