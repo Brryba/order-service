@@ -199,20 +199,18 @@ public class OrderService {
                     .findFirst().orElse(null);
             if (orderItemPatchDto.isDeleted()) {
                 order.getOrderItems().remove(existingItem);
-            } else {
-                if (orderItemPatchDto.getNewQuantity() != null) {
-                    if (existingItem == null) {
-                        Item newItem = itemRepository.findById(orderItemPatchDto.getItemId()).orElseThrow(() ->
-                                new ItemNotFoundException("Item with id " + orderItemPatchDto.getItemId() +
-                                        " was not found"));
+            } else if (orderItemPatchDto.getNewQuantity() != null) {
+                if (existingItem == null) {
+                    Item newItem = itemRepository.findById(orderItemPatchDto.getItemId()).orElseThrow(() ->
+                            new ItemNotFoundException("Item with id " + orderItemPatchDto.getItemId() +
+                                    " was not found"));
 
-                        OrderItem newOrderItem = orderItemsMapper.toOrderItem(orderItemPatchDto);
-                        newOrderItem.setOrder(order);
-                        newOrderItem.setItem(newItem);
-                        order.getOrderItems().add(newOrderItem);
-                    } else {
-                        existingItem.setQuantity(orderItemPatchDto.getNewQuantity());
-                    }
+                    OrderItem newOrderItem = orderItemsMapper.toOrderItem(orderItemPatchDto);
+                    newOrderItem.setOrder(order);
+                    newOrderItem.setItem(newItem);
+                    order.getOrderItems().add(newOrderItem);
+                } else {
+                    existingItem.setQuantity(orderItemPatchDto.getNewQuantity());
                 }
             }
         }

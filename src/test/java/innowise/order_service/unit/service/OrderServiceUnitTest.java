@@ -3,6 +3,7 @@ package innowise.order_service.unit.service;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
+import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Item;
@@ -10,6 +11,7 @@ import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderItem;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
+import innowise.order_service.exception.order.IllegalNewOrderException;
 import innowise.order_service.exception.order.IllegalOrderStatusException;
 import innowise.order_service.exception.order.IllegalStatusChangeException;
 import innowise.order_service.exception.order.OrderNotFoundException;
@@ -83,24 +85,8 @@ class OrderServiceUnitTest {
         order = Order.builder()
                 .id(ORDER_ID)
                 .userId(USER_ID)
-                .status(OrderStatus.NEW)
+                .status(OrderStatus.CREATING)
                 .creationDate(LocalDateTime.now())
-                .build();
-
-        List<OrderItemRequestDto> orderItemDtos = Arrays.asList(
-                OrderItemRequestDto.builder()
-                        .itemId(ITEM_ID_1)
-                        .quantity(2)
-                        .build(),
-                OrderItemRequestDto.builder()
-                        .itemId(ITEM_ID_2)
-                        .quantity(1)
-                        .build()
-        );
-
-        orderCreateDto = OrderCreateDto.builder()
-                .status(OrderStatus.NEW)
-                .orderItems(orderItemDtos)
                 .build();
 
         item1 = Item.builder()
@@ -143,6 +129,22 @@ class OrderServiceUnitTest {
         orderUpdateDto = OrderUpdateDto.builder()
                 .status(OrderStatus.CANCELLED)
                 .build();
+
+        List<OrderItemRequestDto> orderItemDtos = Arrays.asList(
+                OrderItemRequestDto.builder()
+                        .itemId(ITEM_ID_1)
+                        .quantity(2)
+                        .build(),
+                OrderItemRequestDto.builder()
+                        .itemId(ITEM_ID_2)
+                        .quantity(1)
+                        .build()
+        );
+
+        orderCreateDto = OrderCreateDto.builder()
+                .status(OrderStatus.CREATING)
+                .orderItems(orderItemDtos)
+                .build();
     }
 
     @Test
@@ -173,6 +175,32 @@ class OrderServiceUnitTest {
 
         verify(itemRepository).findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2));
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void addOrder_whenWrongStatus_shouldThrowException() {
+        orderCreateDto.setStatus(OrderStatus.DELIVERED);
+
+        assertThatThrownBy(() -> orderService.addOrder(orderCreateDto, USER_ID))
+                .isInstanceOf(IllegalNewOrderException.class);
+    }
+
+    @Test
+    void addOrder_shouldAllOnlyOneCreatingOrderForEachUser() {
+        when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
+                .thenReturn(Arrays.asList(item1, item2));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(userServiceClient.getUserById(2L)).thenReturn(userResponseDto);
+        when(orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, 1L)).thenReturn(true);
+        when(orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, 2L)).thenReturn(false);
+
+        assertThrows(IllegalNewOrderException.class, () ->
+                orderService.addOrder(orderCreateDto, 1L));
+
+        OrderResponseDto result = orderService.addOrder(orderCreateDto, 2L);
+
+        assertEquals(orderCreateDto.getOrderItems().size(), result.getOrderItems().size());
+        assertEquals(userResponseDto, result.getUser());
     }
 
     @Test
@@ -255,8 +283,8 @@ class OrderServiceUnitTest {
 
     @Test
     void getOrdersByStatus_WhenValidStatus_ShouldReturnOrders() {
-        String status = "NEW";
-        when(orderRepository.findOrdersByStatusAndUserId(OrderStatus.NEW, USER_ID))
+        String status = "CREATING";
+        when(orderRepository.findOrdersByStatusAndUserId(OrderStatus.CREATING, USER_ID))
                 .thenReturn(Collections.singletonList(order));
         when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
@@ -264,8 +292,8 @@ class OrderServiceUnitTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getId()).isEqualTo(ORDER_ID);
-        assertThat(result.getFirst().getStatus()).isEqualTo(OrderStatus.NEW);
-        verify(orderRepository).findOrdersByStatusAndUserId(OrderStatus.NEW, USER_ID);
+        assertThat(result.getFirst().getStatus()).isEqualTo(OrderStatus.CREATING);
+        verify(orderRepository).findOrdersByStatusAndUserId(OrderStatus.CREATING, USER_ID);
         verify(userServiceClient).getUserById(USER_ID);
     }
 
