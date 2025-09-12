@@ -17,4 +17,3 @@ public class ErrorDto {
     private String requestType;
     private String path;
 }
-

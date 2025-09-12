@@ -9,3 +9,5 @@ databaseChangeLog:
       file: /db/changelog/changesets/004-fix-order-status-check-constraint.yaml
   - include:
       file: /db/changelog/changesets/005-update-order-statuses.yaml
+  - include:
+      file: /db/changelog/changesets/006-add-creating-order-status.yaml
