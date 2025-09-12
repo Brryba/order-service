@@ -147,6 +147,7 @@ public class OrderService {
     @Transactional
     public OrderResponseDto patchCreatingOrder(long orderId, List<OrderItemPatchDto> updatedOrderItems, Long userId) {
         Order order = loadOrderFromDatabase(orderId);
+        orderValidator.validateOrderOwner(order, userId);
         orderValidator.validateOrderCanBeChanged(order);
 
         for (OrderItemPatchDto orderItemPatchDto : updatedOrderItems) {

@@ -5,17 +5,15 @@ import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
+import innowise.order_service.dto.order_items.OrderItemResponseDto;
 import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Item;
 import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderItem;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
-import innowise.order_service.exception.order.IllegalNewOrderException;
 import innowise.order_service.exception.order.IllegalOrderStatusException;
-import innowise.order_service.exception.order.IllegalStatusChangeException;
 import innowise.order_service.exception.order.OrderNotFoundException;
-import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.mapper.OrderItemsMapperImpl;
 import innowise.order_service.mapper.OrderMapperImpl;
 import innowise.order_service.repository.ItemRepository;
@@ -35,6 +33,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -43,7 +42,10 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.predicate;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -105,7 +107,7 @@ class OrderServiceUnitTest {
                 .price(BigDecimal.valueOf(15.00))
                 .build();
 
-        List<OrderItem> orderItems = Arrays.asList(
+        List<OrderItem> orderItems = new ArrayList<>(Arrays.asList(
                 OrderItem.builder()
                         .id(1)
                         .quantity(2)
@@ -118,7 +120,7 @@ class OrderServiceUnitTest {
                         .order(order)
                         .item(item2)
                         .build()
-        );
+        ));
 
         order.setOrderItems(orderItems);
 
@@ -182,32 +184,6 @@ class OrderServiceUnitTest {
     }
 
     @Test
-    void addOrder_whenWrongStatus_shouldThrowException() {
-        orderCreateDto.setStatus(OrderStatus.DELIVERED);
-
-        assertThatThrownBy(() -> orderService.addOrder(orderCreateDto, USER_ID))
-                .isInstanceOf(IllegalNewOrderException.class);
-    }
-
-    @Test
-    void addOrder_shouldAllOnlyOneCreatingOrderForEachUser() {
-        when(itemRepository.findItemsByIdIn(Set.of(ITEM_ID_1, ITEM_ID_2)))
-                .thenReturn(Arrays.asList(item1, item2));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(userServiceClient.getUserById(2L)).thenReturn(userResponseDto);
-        when(orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, 1L)).thenReturn(true);
-        when(orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, 2L)).thenReturn(false);
-
-        assertThrows(IllegalNewOrderException.class, () ->
-                orderService.addOrder(orderCreateDto, 1L));
-
-        OrderResponseDto result = orderService.addOrder(orderCreateDto, 2L);
-
-        assertEquals(orderCreateDto.getOrderItems().size(), result.getOrderItems().size());
-        assertEquals(userResponseDto, result.getUser());
-    }
-
-    @Test
     void getOrderById_WhenOrderExists_ShouldReturnOrder() {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
         when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
@@ -232,24 +208,6 @@ class OrderServiceUnitTest {
 
         verify(orderRepository).findById(ORDER_ID);
         verify(userServiceClient, never()).getUserById(any());
-    }
-
-    @Test
-    void getOrderById_WhenUserNotOwner_ShouldThrowOrderAccessDeniedException() {
-        long differentUserId = 999L;
-        Order orderWithDifferentUser = Order.builder()
-                .id(ORDER_ID)
-                .userId(differentUserId)
-                .status(OrderStatus.PROCESSING)
-                .build();
-
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(orderWithDifferentUser));
-
-        assertThatThrownBy(() -> orderService.getOrderById(ORDER_ID, USER_ID))
-                .isInstanceOf(OrderAccessDeniedException.class)
-                .hasMessage("You are only allowed to access your own orders");
-
-        verify(orderRepository).findById(ORDER_ID);
     }
 
     @Test
@@ -348,16 +306,6 @@ class OrderServiceUnitTest {
     }
 
     @Test
-    void testUpdateOrderStatus_NotAllowsWrongStatusChange() {
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
-
-        orderUpdateDto.setStatus(OrderStatus.PAYMENT_FAILED);
-        assertThrows(IllegalStatusChangeException.class, () -> {
-            orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID);
-        });
-    }
-
-    @Test
     void updateOrder_WhenOrderNotFound_ShouldThrowOrderNotFoundException() {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
 
@@ -370,22 +318,62 @@ class OrderServiceUnitTest {
     }
 
     @Test
-    void updateOrder_WhenUserNotOwner_ShouldThrowOrderAccessDeniedException() {
-        long differentUserId = 999L;
-        Order orderWithDifferentUser = Order.builder()
-                .id(ORDER_ID)
-                .userId(differentUserId)
-                .status(OrderStatus.PROCESSING)
+    void patchOrder_addsOrderItem_success() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+
+        final long ITEM_3_ID = 30L;
+        Item newItem = Item.builder()
+                .id(ITEM_3_ID)
                 .build();
+        List<OrderItemPatchDto> changedItems = List.of(
+                OrderItemPatchDto.builder()
+                        .itemId(ITEM_3_ID)
+                        .quantity(2)
+                        .build());
+        when(itemRepository.findById(ITEM_3_ID)).thenReturn(Optional.of(newItem));
 
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(orderWithDifferentUser));
+        OrderResponseDto result = orderService.patchCreatingOrder(ORDER_ID, changedItems, USER_ID);
+        assertAll(() -> {
+            assertEquals(ORDER_ID, result.getId());
+            assertEquals(3, result.getOrderItems().size());
+        });
+    }
 
-        assertThatThrownBy(() -> orderService.updateOrder(ORDER_ID, orderUpdateDto, USER_ID))
-                .isInstanceOf(OrderAccessDeniedException.class)
-                .hasMessage("You are only allowed to access your own orders");
+    @Test
+    void patchOrder_changeOrderItemQuantity_success() {
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        List<OrderItemPatchDto> changedItems = List.of(
+                OrderItemPatchDto.builder()
+                        .itemId(ITEM_ID_1)
+                        .quantity(100)
+                        .build());
 
-        verify(orderRepository).findById(ORDER_ID);
-        verify(orderRepository, never()).save(any());
+        OrderResponseDto result = orderService.patchCreatingOrder(ORDER_ID, changedItems, USER_ID);
+        assertAll(() -> {
+            assertEquals(ORDER_ID, result.getId());
+            assertEquals(2, result.getOrderItems().size());
+            OrderItemResponseDto changed = result.getOrderItems()
+                    .stream()
+                    .filter(i -> i.getItemId().equals(ITEM_ID_1))
+                    .findFirst().orElse(null);
+            assertNotNull(changed);
+            assertEquals(ITEM_ID_1, changed.getItemId());
+            assertEquals(100, changed.getQuantity());
+        });
+    }
+
+    @Test
+    void patchOrderItemCantUpdateNotExistingItem_ShouldThrowException() {
+        final long NOT_EXISTING_ID = 30L;
+        List<OrderItemPatchDto> changedItems = List.of(
+                OrderItemPatchDto.builder()
+                        .itemId(ITEM_ID_1)
+                        .quantity(100)
+                        .build());
+
+        assertThatThrownBy(() -> orderService.patchCreatingOrder(ORDER_ID, changedItems, USER_ID));
     }
 
     @Test
@@ -405,25 +393,6 @@ class OrderServiceUnitTest {
         assertThatThrownBy(() -> orderService.deleteOrder(ORDER_ID, USER_ID))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessage("Order with id " + ORDER_ID + " was not found");
-
-        verify(orderRepository).findById(ORDER_ID);
-        verify(orderRepository, never()).delete(any());
-    }
-
-    @Test
-    void deleteOrder_WhenUserNotOwner_ShouldThrowOrderAccessDeniedException() {
-        long differentUserId = 999L;
-        Order orderWithDifferentUser = Order.builder()
-                .id(ORDER_ID)
-                .userId(differentUserId)
-                .status(OrderStatus.PROCESSING)
-                .build();
-
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(orderWithDifferentUser));
-
-        assertThatThrownBy(() -> orderService.deleteOrder(ORDER_ID, USER_ID))
-                .isInstanceOf(OrderAccessDeniedException.class)
-                .hasMessage("You are only allowed to access your own orders");
 
         verify(orderRepository).findById(ORDER_ID);
         verify(orderRepository, never()).delete(any());

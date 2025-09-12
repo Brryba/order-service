@@ -7,6 +7,7 @@ import innowise.order_service.configuration.TestcontainersConfiguration;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
+import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.payment.PaymentRequestDto;
 import innowise.order_service.dto.user.UserResponseDto;
@@ -82,15 +83,6 @@ public class OrderIntegrationTest {
 
     @BeforeAll
     static void setup() {
-        orderCreateDto = OrderCreateDto.builder()
-                .status(OrderStatus.NEW)
-                .orderItems(List.of(
-                        OrderItemRequestDto.builder()
-                                .itemId(1L)
-                                .quantity(1)
-                                .build()))
-                .build();
-
         orderUpdateDto = OrderUpdateDto.builder()
                 .status(OrderStatus.PAYMENT_WAITING)
                 .build();
@@ -109,6 +101,15 @@ public class OrderIntegrationTest {
         item = Item.builder()
                 .price(BigDecimal.ONE)
                 .name("Item name")
+                .build();
+
+        orderCreateDto = OrderCreateDto.builder()
+                .status(OrderStatus.NEW)
+                .orderItems(List.of(
+                        OrderItemRequestDto.builder()
+                                .itemId(1L)
+                                .quantity(1)
+                                .build()))
                 .build();
     }
 
@@ -192,6 +193,29 @@ public class OrderIntegrationTest {
 
         assertThrows(OrderAccessDeniedException.class, () ->
                 orderService.updateOrder(orderId, orderUpdateDto, 99999L));
+    }
+
+    @Test
+    @Transactional
+    void patchOrder_deleteOrderItem_success() {
+        saveItem();
+        orderCreateDto.setStatus(OrderStatus.CREATING);
+        long orderId = orderService.addOrder(orderCreateDto, USER_ID).getId();
+        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+        assertTrue(optionalOrder.isPresent());
+        Order order = optionalOrder.get();
+
+        List<OrderItemPatchDto> changedItems = List.of(
+                OrderItemPatchDto.builder()
+                        .itemId(order.getOrderItems().getFirst().getItem().getId())
+                        .isDeleted(true)
+                        .build());
+
+        orderService.patchCreatingOrder(orderId, changedItems, USER_ID);
+        Optional<Order> foundOrder = orderRepository.findById(orderId);
+        assertTrue(foundOrder.isPresent());
+        assertEquals(orderId, foundOrder.get().getId());
+        assertEquals(0, foundOrder.get().getOrderItems().size());
     }
 
     @Test
