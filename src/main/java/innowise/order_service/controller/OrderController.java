@@ -1,13 +1,16 @@
 package innowise.order_service.controller;
 
 import innowise.order_service.dto.order.OrderCreateDto;
+import innowise.order_service.dto.order.OrderPageResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.index.qual.NonNegative;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,15 +59,19 @@ public class OrderController {
 
     @GetMapping()
     @ResponseStatus(HttpStatus.OK)
-    public List<OrderResponseDto> getOrders(@RequestHeader("X-User-Id") Long userId) {
-        return orderService.getAllUserOrders(userId);
+    public OrderPageResponseDto getOrders(@RequestHeader("X-User-Id") Long userId,
+                                          @RequestParam(defaultValue = "0") @NonNegative Integer page,
+                                          @RequestParam(defaultValue = "10") @Positive Integer size) {
+        return orderService.getAllUserOrders(userId, page, size);
     }
 
     @GetMapping("/status/{status}")
     @ResponseStatus(HttpStatus.OK)
-    public List<OrderResponseDto> getOrdersByStatus(@PathVariable String status,
-                                                    @RequestHeader("X-User-Id") Long userId) {
-        return orderService.getOrdersByStatus(status, userId);
+    public OrderPageResponseDto getOrdersByStatus(@PathVariable String status,
+                                                    @RequestHeader("X-User-Id") Long userId,
+                                                    @RequestParam(defaultValue = "0") @NonNegative Integer page,
+                                                    @RequestParam(defaultValue = "10") @Positive Integer size) {
+        return orderService.getOrdersByStatus(status, userId, page, size);
     }
 
     @PutMapping("/{id}")

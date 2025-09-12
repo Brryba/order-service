@@ -29,6 +29,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
@@ -46,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -252,10 +256,10 @@ class OrderServiceUnitTest {
 
     @Test
     void getAllUserOrders() {
-        when(orderRepository.findOrdersByUserId(USER_ID)).thenReturn(List.of(order));
+        when(orderRepository.findOrdersByUserId(eq(USER_ID), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(order)));
         when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        List<OrderResponseDto> result = orderService.getAllUserOrders(USER_ID);
+        List<OrderResponseDto> result = orderService.getAllUserOrders(USER_ID, 0, 10).getOrders();
         assertThat(result).hasSize(1);
         assertEquals(USER_ID, result.getFirst().getUserId());
     }
@@ -263,12 +267,12 @@ class OrderServiceUnitTest {
     @Test
     void getAllUserOrders_WhenOrdersNotFound_ShouldThrowOrderNotFoundException() {
         List<Long> orderIds = Arrays.asList(ORDER_ID, 2L);
-        when(orderRepository.findOrdersByIdIn(orderIds)).thenReturn(List.of());
+        when(orderRepository.findOrdersByUserId(eq(USER_ID), any(Pageable.class))).thenReturn(Page.empty());
 
-        assertThatThrownBy(() -> orderService.getAllUserOrders(USER_ID))
+        assertThatThrownBy(() -> orderService.getAllUserOrders(USER_ID, 0, 10))
                 .isInstanceOf(OrderNotFoundException.class);
 
-        verify(orderRepository).findOrdersByUserId(USER_ID);
+        verify(orderRepository).findOrdersByUserId(eq(USER_ID), any(Pageable.class));
     }
 
     @Test
@@ -286,16 +290,16 @@ class OrderServiceUnitTest {
     @Test
     void getOrdersByStatus_WhenValidStatus_ShouldReturnOrders() {
         String status = "CREATING";
-        when(orderRepository.findOrdersByStatusAndUserId(OrderStatus.CREATING, USER_ID))
-                .thenReturn(Collections.singletonList(order));
+        when(orderRepository.findOrdersByStatusAndUserId(eq(OrderStatus.CREATING), eq(USER_ID), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(order)));
         when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
-        List<OrderResponseDto> result = orderService.getOrdersByStatus(status, USER_ID);
+        List<OrderResponseDto> result = orderService.getOrdersByStatus(status, USER_ID, 0, 10).getOrders();
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getId()).isEqualTo(ORDER_ID);
         assertThat(result.getFirst().getStatus()).isEqualTo(OrderStatus.CREATING);
-        verify(orderRepository).findOrdersByStatusAndUserId(OrderStatus.CREATING, USER_ID);
+        verify(orderRepository).findOrdersByStatusAndUserId(eq(OrderStatus.CREATING), eq(USER_ID), any(Pageable.class));
         verify(userServiceClient).getUserById(USER_ID);
     }
 
@@ -303,24 +307,24 @@ class OrderServiceUnitTest {
     void getOrdersByStatus_WhenInvalidStatus_ShouldThrowIllegalOrderStatusException() {
         String invalidStatus = "INVALID_STATUS";
 
-        assertThatThrownBy(() -> orderService.getOrdersByStatus(invalidStatus, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrdersByStatus(invalidStatus, USER_ID, 0, 10))
                 .isInstanceOf(IllegalOrderStatusException.class)
                 .hasMessageContaining("Illegal order status INVALID_STATUS");
 
-        verify(orderRepository, never()).findOrdersByStatusAndUserId(any(OrderStatus.class), any(Long.class));
+        verify(orderRepository, never()).findOrdersByStatusAndUserId(eq(OrderStatus.CREATING), eq(USER_ID), any(Pageable.class));
     }
 
     @Test
     void getOrdersByStatus_WhenNoOrdersFound_ShouldThrowOrderNotFoundException() {
         String status = "PROCESSING";
-        when(orderRepository.findOrdersByStatusAndUserId(OrderStatus.PROCESSING, USER_ID))
-                .thenReturn(List.of());
+        when(orderRepository.findOrdersByStatusAndUserId(eq(OrderStatus.PROCESSING), eq(USER_ID), any(Pageable.class)))
+                .thenReturn(Page.empty());
 
-        assertThatThrownBy(() -> orderService.getOrdersByStatus(status, USER_ID))
+        assertThatThrownBy(() -> orderService.getOrdersByStatus(status, USER_ID, 0, 10))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessageContaining("None of the orders with status PROCESSING were found");
 
-        verify(orderRepository).findOrdersByStatusAndUserId(OrderStatus.PROCESSING, USER_ID);
+        verify(orderRepository).findOrdersByStatusAndUserId(eq(OrderStatus.PROCESSING), eq(USER_ID), any(Pageable.class));
     }
 
     @Test
@@ -365,6 +369,7 @@ class OrderServiceUnitTest {
         final long ITEM_3_ID = 30L;
         Item newItem = Item.builder()
                 .id(ITEM_3_ID)
+                .price(BigDecimal.TEN)
                 .build();
         List<OrderItemPatchDto> changedItems = List.of(
                 OrderItemPatchDto.builder()

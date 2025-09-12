@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import innowise.order_service.controller.ExceptionController;
 import innowise.order_service.controller.OrderController;
 import innowise.order_service.dto.order.OrderCreateDto;
+import innowise.order_service.dto.order.OrderPageResponseDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order_items.OrderItemPatchDto;
@@ -64,6 +65,7 @@ public class OrderControllerTest {
     private static OrderUpdateDto orderUpdateDto;
     private static OrderResponseDto orderResponseDto;
     private static UserResponseDto userResponseDto;
+    private static OrderPageResponseDto orderPageResponseDto;
     private static final long ORDER_ID = 1;
     private static final OrderStatus ORDER_STATUS = OrderStatus.NEW;
     private static final long USER_ID = 1;
@@ -110,6 +112,13 @@ public class OrderControllerTest {
                                 .quantity(2)
                                 .build()))
                 .build();
+
+        orderPageResponseDto = OrderPageResponseDto.builder()
+                .orders(List.of(orderResponseDto))
+                .pageSize(10)
+                .currentPage(0)
+                .maxPage(0)
+                .build();
     }
 
     @Test
@@ -126,7 +135,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
+                .andExpect(jsonPath("$.orderItems[0].itemId").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
@@ -150,7 +159,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
+                .andExpect(jsonPath("$.orderItems[0].itemId").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
@@ -165,21 +174,21 @@ public class OrderControllerTest {
 
     @Test
     void testGetAllUserOrders_whenExists_shouldReturn200() throws Exception {
-        when(orderService.getAllUserOrders(USER_ID))
-                .thenReturn(List.of(orderResponseDto));
+        when(orderService.getAllUserOrders(USER_ID, 0, 10))
+                .thenReturn(orderPageResponseDto);
 
-        mockMvc.perform(get("/api/order")
+        mockMvc.perform(get("/api/order?page=0&size=10")
                         .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.[0].user.id").value(USER_ID));
+                .andExpect(jsonPath("$.orders[0].user.id").value(USER_ID));
     }
 
     @Test
     void testGetAllUserOrders_whenDontExist_shouldReturn404() throws Exception {
         doThrow(new OrderNotFoundException("Orders were not found in database"))
-                .when(orderService).getAllUserOrders(USER_ID);
+                .when(orderService).getAllUserOrders(USER_ID, 0, 10 );
 
-        mockMvc.perform(get("/api/order", ORDER_ID)
+        mockMvc.perform(get("/api/order?page=0&size=10", ORDER_ID)
                         .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isNotFound());
     }
@@ -199,13 +208,13 @@ public class OrderControllerTest {
 
     @Test
     void testGetItemsByStatus_whenExists_shouldReturn200() throws Exception {
-        when(orderService.getOrdersByStatus("NEW", USER_ID))
-                .thenReturn(List.of(orderResponseDto));
+        when(orderService.getOrdersByStatus("NEW", USER_ID, 0, 10))
+                .thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/order/status/{status}", OrderStatus.NEW.toString())
                         .header(USER_ID_HEADER, "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.[0].id").value(orderResponseDto.getId()));
+                .andExpect(jsonPath("$.orders[0].id").value(orderResponseDto.getId()));
     }
 
     @Test
@@ -221,7 +230,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
+                .andExpect(jsonPath("$.orderItems[0].itemId").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test
@@ -237,7 +246,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(orderResponseDto.getId()))
                 .andExpect(jsonPath("$.user.name").value(userResponseDto.getName()))
                 .andExpect(jsonPath("$.status").value(orderResponseDto.getStatus().toString()))
-                .andExpect(jsonPath("$.orderItems[0].id").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
+                .andExpect(jsonPath("$.orderItems[0].itemId").value(orderResponseDto.getOrderItems().getFirst().getItemId()));
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import innowise.order_service.configuration.TestcontainersConfiguration;
 import innowise.order_service.dto.order.OrderCreateDto;
+import innowise.order_service.dto.order.OrderPageResponseDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order_items.OrderItemPatchDto;
@@ -163,12 +164,15 @@ public class OrderIntegrationTest {
         orderService.addOrder(orderCreateDto, USER_ID);
         orderService.addOrder(orderCreateDto, USER_ID);
 
-        List<OrderResponseDto> newOrders =
-                orderService.getOrdersByStatus(orderCreateDto.getStatus().name(), USER_ID);
-        assertEquals(2, newOrders.size());
+        OrderPageResponseDto newOrders =
+                orderService.getOrdersByStatus(orderCreateDto.getStatus().name(), USER_ID, 0, 10);
+        assertEquals(2, newOrders.getOrders().size());
+        assertEquals(10, newOrders.getPageSize());
+        assertEquals(0, newOrders.getCurrentPage());
+        assertEquals(0, newOrders.getMaxPage());
 
         assertThrows(OrderNotFoundException.class, () ->
-                orderService.getOrdersByStatus(OrderStatus.PAYMENT_FAILED.name(), USER_ID));
+                orderService.getOrdersByStatus(OrderStatus.PAYMENT_FAILED.name(), USER_ID, 0, 10));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package innowise.order_service.service;
 
+import innowise.order_service.dto.order.OrderPageResponseDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderCreateDto;
@@ -22,6 +23,10 @@ import innowise.order_service.validator.OrderValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,22 +94,24 @@ public class OrderService {
                 .toList();
     }
 
-    public List<OrderResponseDto> getAllUserOrders(Long userId) {
-        List<Order> orders = orderRepository.findOrdersByUserId(userId);
+    public OrderPageResponseDto getAllUserOrders(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("creationDate").descending());
+        Page<Order> orderPage = orderRepository.findOrdersByUserId(userId, pageable);
 
-        if (orders == null || orders.isEmpty()) {
-            log.warn("Orders for user {} were not found in database", userId);
-            throw new OrderNotFoundException("You haven't created any orders yet");
+        if (orderPage.getContent().isEmpty()) {
+            log.warn("Orders for user {} were not found in database on page {}", userId, page);
+            if (orderPage.getTotalElements() == 0) {
+                throw new OrderNotFoundException("You haven't created any order yet");
+            } else {
+                throw new OrderNotFoundException("Page " + page + " does not contain any orders");
+            }
         }
 
-        log.info("{} Orders loaded from database for user {}", orders.size(), userId);
-        UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
-        return orders.stream()
-                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto, countTotalAmount(order)))
-                .toList();
+        log.info("{} Orders loaded from database for user {}", orderPage.getContent().size(), userId);
+        return getOrderPageResponseDto(orderPage, userId);
     }
 
-    public List<OrderResponseDto> getOrdersByStatus(String status, Long userId) {
+    public OrderPageResponseDto getOrdersByStatus(String status, Long userId, int page, int size) {
         OrderStatus orderStatus;
         try {
             orderStatus = OrderStatus.valueOf(status.toUpperCase());
@@ -113,18 +120,16 @@ public class OrderService {
                     ".\n Valid values are: " + Arrays.toString(OrderStatus.values()));
         }
 
-        List<Order> orders = orderRepository.findOrdersByStatusAndUserId(orderStatus, userId);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("creationDate").descending());
+        Page<Order> orders = orderRepository.findOrdersByStatusAndUserId(orderStatus, userId, pageable);
 
         if (orders == null || orders.isEmpty()) {
             log.warn("Orders with status {} were not found in database", status);
-            throw new OrderNotFoundException("None of the orders with status " + status + " were found");
+            throw new OrderNotFoundException("None of the orders with status " + status + " were found on page " + page);
         }
-        log.info("{} Orders with {} status loaded from database", orders.size(), status);
+        log.info("{} Orders with {} status loaded from database", orders.getContent().size(), status);
 
-        UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
-        return orders.stream()
-                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto, countTotalAmount(order)))
-                .toList();
+        return getOrderPageResponseDto(orders, userId);
     }
 
     @Transactional
@@ -218,8 +223,24 @@ public class OrderService {
         }
     }
 
+    private OrderPageResponseDto getOrderPageResponseDto(Page<Order> orderPage, Long userId) {
+        UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
+        List<OrderResponseDto> orderResponseDtos = orderPage.getContent().stream()
+                .map(order -> orderMapper.toOrderResponseDto(order, userResponseDto, countTotalAmount(order)))
+                .toList();
+        return OrderPageResponseDto.builder()
+                .currentPage(orderPage.getNumber())
+                .pageSize(orderPage.getSize())
+                .maxPage(orderPage.getTotalPages() - 1)
+                .orders(orderResponseDtos)
+                .build();
+    }
+
     private BigDecimal countTotalAmount(Order order) {
         BigDecimal totalAmount = BigDecimal.ZERO;
+        if (order.getOrderItems() == null || order.getOrderItems().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
         for (OrderItem orderItem : order.getOrderItems()) {
             totalAmount = totalAmount.add(orderItem.getItem().getPrice()
                     .multiply(BigDecimal.valueOf(orderItem.getQuantity())));
