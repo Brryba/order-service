@@ -1,5 +1,6 @@
 package innowise.order_service.mapper;
 
+import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.order_items.OrderItemResponseDto;
 import innowise.order_service.entity.OrderItem;
@@ -15,6 +16,12 @@ public interface OrderItemsMapper {
     @Mapping(target = "item", ignore = true)
     @Mapping(target = "order", ignore = true)
     OrderItem toOrderItem(OrderItemRequestDto orderItemRequestDto);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "item", ignore = true)
+    @Mapping(target = "order", ignore = true)
+    @Mapping(target = "quantity", source = "newQuantity")
+    OrderItem toOrderItem(OrderItemPatchDto orderItemPatchDto);
 
     @Mapping(target = "itemId", source = "item.id")
     @Mapping(target = "name", source = "item.name")

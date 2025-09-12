@@ -3,6 +3,7 @@ package innowise.order_service.service;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
 import innowise.order_service.dto.order.OrderCreateDto;
+import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.dto.order_items.OrderItemRequestDto;
 import innowise.order_service.dto.user.UserResponseDto;
 import innowise.order_service.entity.Item;
@@ -54,7 +55,7 @@ public class OrderService {
         }
 
         if (orderCreateDto.getStatus() == OrderStatus.CREATING &&
-        orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, userId)) {
+                orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, userId)) {
             log.warn("Forbidden creating multiple CREATING orders for user {}", userId);
             throw new IllegalNewOrderException("You are only allowed to have one CREATING order");
         }
@@ -175,6 +176,50 @@ public class OrderService {
 
         order = orderRepository.save(order);
         log.info("Order {} updated to {} status", orderId, order.getStatus());
+    }
+
+    @Transactional
+    public OrderResponseDto patchCreatingOrder(long orderId, List<OrderItemPatchDto> updatedOrderItems, Long userId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+            log.warn("Order {} was not found in database", orderId);
+            return new OrderNotFoundException("Order with id " + orderId + " was not found");
+        });
+
+        log.info("Order {} loaded from database", orderId);
+
+        if (order.getStatus() != OrderStatus.CREATING) {
+            log.warn("Forbidden order items change for {} status", order.getStatus());
+            throw new IllegalStatusChangeException("You are only allowed to change items of CREATING order");
+        }
+
+        for (OrderItemPatchDto orderItemPatchDto : updatedOrderItems) {
+            OrderItem existingItem = order.getOrderItems().stream()
+                    .filter(orderItem ->
+                            orderItem.getItem().getId() == orderItemPatchDto.getItemId())
+                    .findFirst().orElse(null);
+            if (orderItemPatchDto.isDeleted()) {
+                order.getOrderItems().remove(existingItem);
+            } else {
+                if (orderItemPatchDto.getNewQuantity() != null) {
+                    if (existingItem == null) {
+                        Item newItem = itemRepository.findById(orderItemPatchDto.getItemId()).orElseThrow(() ->
+                                new ItemNotFoundException("Item with id " + orderItemPatchDto.getItemId() +
+                                        " was not found"));
+
+                        OrderItem newOrderItem = orderItemsMapper.toOrderItem(orderItemPatchDto);
+                        newOrderItem.setOrder(order);
+                        newOrderItem.setItem(newItem);
+                        order.getOrderItems().add(newOrderItem);
+                    } else {
+                        existingItem.setQuantity(orderItemPatchDto.getNewQuantity());
+                    }
+                }
+            }
+        }
+
+        order = orderRepository.save(order);
+        log.info("Order {} updated", order.getId());
+        return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
     }
 
     @Transactional

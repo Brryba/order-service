@@ -3,6 +3,7 @@ package innowise.order_service.controller;
 import innowise.order_service.dto.order.OrderCreateDto;
 import innowise.order_service.dto.order.OrderUpdateDto;
 import innowise.order_service.dto.order.OrderResponseDto;
+import innowise.order_service.dto.order_items.OrderItemPatchDto;
 import innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -65,6 +67,14 @@ public class OrderController {
                                         @RequestBody @Valid OrderUpdateDto orderUpdateDto,
                                         @RequestHeader("X-User-Id") Long userId) {
         return orderService.updateOrder(id, orderUpdateDto, userId);
+    }
+
+    @PatchMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public OrderResponseDto updateOrderStatus(@PathVariable long id,
+                                              @RequestBody @Valid List<OrderItemPatchDto> updatedOrderItems,
+                                              @RequestHeader("X-User-Id") Long userId) {
+        return orderService.patchCreatingOrder(id, updatedOrderItems, userId);
     }
 
     @DeleteMapping("/{id}")
