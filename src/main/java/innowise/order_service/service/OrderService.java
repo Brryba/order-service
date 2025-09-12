@@ -11,16 +11,14 @@ import innowise.order_service.entity.Order;
 import innowise.order_service.entity.OrderItem;
 import innowise.order_service.entity.OrderStatus;
 import innowise.order_service.exception.item.ItemNotFoundException;
-import innowise.order_service.exception.order.IllegalNewOrderException;
 import innowise.order_service.exception.order.IllegalOrderStatusException;
-import innowise.order_service.exception.order.IllegalStatusChangeException;
 import innowise.order_service.exception.order.OrderNotFoundException;
-import innowise.order_service.exception.security.OrderAccessDeniedException;
 import innowise.order_service.mapper.OrderItemsMapper;
 import innowise.order_service.mapper.OrderMapper;
 import innowise.order_service.repository.ItemRepository;
 import innowise.order_service.repository.OrderRepository;
 import innowise.order_service.service.kafka.KafkaProducerService;
+import innowise.order_service.validator.OrderValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +37,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @ToString
 public class OrderService {
+    private final OrderValidator orderValidator;
     private final OrderRepository orderRepository;
     private final ItemRepository itemRepository;
     private final OrderMapper orderMapper;
@@ -48,17 +47,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponseDto addOrder(OrderCreateDto orderCreateDto, Long userId) {
-        if (orderCreateDto.getStatus() != OrderStatus.CREATING &&
-                orderCreateDto.getStatus() != OrderStatus.NEW) {
-            log.warn("Forbidden creating order with status {}", orderCreateDto.getStatus());
-            throw new IllegalNewOrderException("You are only allowed to create orders with CREATING or NEW status");
-        }
-
-        if (orderCreateDto.getStatus() == OrderStatus.CREATING &&
-                orderRepository.existsOrderByStatusAndUserId(OrderStatus.CREATING, userId)) {
-            log.warn("Forbidden creating multiple CREATING orders for user {}", userId);
-            throw new IllegalNewOrderException("You are only allowed to have one CREATING order");
-        }
+        orderValidator.validateCreateOrderRequest(orderCreateDto, userId);
 
         Order order = orderMapper.toOrder(orderCreateDto);
         order.setUserId(userId);
@@ -72,13 +61,10 @@ public class OrderService {
     }
 
     public OrderResponseDto getOrderById(Long orderId, Long userId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
-            log.warn("Order {} not found in database", orderId);
-            return new OrderNotFoundException("Order with id " + orderId + " was not found");
-        });
+        Order order = loadOrderFromDatabase(orderId);
 
         log.info("Order {} loaded", orderId);
-        validateOrderOwner(order, userId);
+        orderValidator.validateOrderOwner(order, userId);
 
         return orderMapper.toOrderResponseDto(order, userServiceClient.getUserById(userId));
     }
@@ -93,7 +79,7 @@ public class OrderService {
 
         log.info("{} Orders loaded from database", orders.size());
         for (Order order : orders) {
-            validateOrderOwner(order, userId);
+            orderValidator.validateOrderOwner(order, userId);
         }
 
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
@@ -117,7 +103,6 @@ public class OrderService {
             log.warn("Orders with status {} were not found in database", status);
             throw new OrderNotFoundException("None of the orders with status " + status + " were found");
         }
-
         log.info("{} Orders with {} status loaded from database", orders.size(), status);
 
         UserResponseDto userResponseDto = userServiceClient.getUserById(userId);
@@ -128,28 +113,14 @@ public class OrderService {
 
     @Transactional
     public OrderResponseDto updateOrder(long orderId, OrderUpdateDto orderUpdateDto, Long userId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
-            log.warn("Order with {} id was not found in database", orderId);
-            return new OrderNotFoundException("Order with id " + orderId + " was not found");
-        });
-
-        log.info("Order {} loaded from database", orderId);
-        validateOrderOwner(order, userId);
-
-        if (!isStatusChangeAllowed(order.getStatus(), orderUpdateDto.getStatus())) {
-            log.warn("Forbidden status change from {} to {}", order.getStatus(), orderUpdateDto.getStatus());
-            throw new IllegalStatusChangeException("You are not allowed to change status from "
-                    + order.getStatus() + " to " + orderUpdateDto.getStatus());
-        }
+        Order order = loadOrderFromDatabase(orderId);
+        orderValidator.validateOrderOwner(order, userId);
+        orderValidator.validateOrderStatusChange(order, orderUpdateDto);
 
         orderMapper.updateOrder(order, orderUpdateDto);
         if (orderUpdateDto.getOrderItems() != null && !orderUpdateDto.getOrderItems().isEmpty()) {
-            if (order.getStatus() == OrderStatus.CREATING) {
-                setOrderItems(order, orderUpdateDto.getOrderItems());
-            } else {
-                log.warn("Forbidden order items change for {} status", order.getStatus());
-                throw new IllegalStatusChangeException("You are only allowed to change items of CREATING order");
-            }
+            orderValidator.validateOrderCanBeChanged(order);
+            setOrderItems(order, orderUpdateDto.getOrderItems());
         }
 
         order = orderRepository.save(order);
@@ -165,12 +136,7 @@ public class OrderService {
 
     @Transactional
     public void updateOrderStatus(long orderId, OrderStatus orderStatus) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
-            log.warn("Order {} was not found in database", orderId);
-            return new OrderNotFoundException("Order with id " + orderId + " was not found");
-        });
-
-        log.info("Order {} loaded from database", orderId);
+        Order order = loadOrderFromDatabase(orderId);
 
         order.setStatus(orderStatus);
 
@@ -180,39 +146,11 @@ public class OrderService {
 
     @Transactional
     public OrderResponseDto patchCreatingOrder(long orderId, List<OrderItemPatchDto> updatedOrderItems, Long userId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
-            log.warn("Order {} was not found in database", orderId);
-            return new OrderNotFoundException("Order with id " + orderId + " was not found");
-        });
-
-        log.info("Order {} loaded from database", orderId);
-
-        if (order.getStatus() != OrderStatus.CREATING) {
-            log.warn("Forbidden order items change for {} status", order.getStatus());
-            throw new IllegalStatusChangeException("You are only allowed to change items of CREATING order");
-        }
+        Order order = loadOrderFromDatabase(orderId);
+        orderValidator.validateOrderCanBeChanged(order);
 
         for (OrderItemPatchDto orderItemPatchDto : updatedOrderItems) {
-            OrderItem existingItem = order.getOrderItems().stream()
-                    .filter(orderItem ->
-                            orderItem.getItem().getId() == orderItemPatchDto.getItemId())
-                    .findFirst().orElse(null);
-            if (orderItemPatchDto.isDeleted()) {
-                order.getOrderItems().remove(existingItem);
-            } else if (orderItemPatchDto.getNewQuantity() != null) {
-                if (existingItem == null) {
-                    Item newItem = itemRepository.findById(orderItemPatchDto.getItemId()).orElseThrow(() ->
-                            new ItemNotFoundException("Item with id " + orderItemPatchDto.getItemId() +
-                                    " was not found"));
-
-                    OrderItem newOrderItem = orderItemsMapper.toOrderItem(orderItemPatchDto);
-                    newOrderItem.setOrder(order);
-                    newOrderItem.setItem(newItem);
-                    order.getOrderItems().add(newOrderItem);
-                } else {
-                    existingItem.setQuantity(orderItemPatchDto.getNewQuantity());
-                }
-            }
+            applyPatchToOrderItem(order, orderItemPatchDto);
         }
 
         order = orderRepository.save(order);
@@ -222,34 +160,44 @@ public class OrderService {
 
     @Transactional
     public void deleteOrder(long orderId, Long userId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
-            log.warn("Order with {} id is not in the database", orderId);
-            return new OrderNotFoundException("Order with id " + orderId + " was not found");
-        });
-        validateOrderOwner(order, userId);
+        Order order = loadOrderFromDatabase(orderId);
+        orderValidator.validateOrderOwner(order, userId);
 
         orderRepository.delete(order);
         log.info("Order {} deleted", orderId);
     }
 
-    private boolean isStatusChangeAllowed(OrderStatus oldStatus, OrderStatus newStatus) {
-        if (oldStatus == newStatus) {
-            return true;
-        }
-        return switch (oldStatus) {
-            case CREATING -> newStatus == OrderStatus.NEW || newStatus == OrderStatus.CANCELLED;
-            case NEW -> newStatus == OrderStatus.PAYMENT_WAITING || newStatus == OrderStatus.CANCELLED;
-            case PAYMENT_FAILED -> newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.PAYMENT_WAITING;
-            case PAYMENT_RECEIVED -> newStatus == OrderStatus.PROCESSING;
-            case PROCESSING -> newStatus == OrderStatus.DELIVERED;
-            default -> false;
-        };
+    private Order loadOrderFromDatabase(long orderId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+            log.warn("Order with {} id is not in the database", orderId);
+            return new OrderNotFoundException("Order with id " + orderId + " was not found");
+        });
+        log.info("Order {} loaded from database", orderId);
+        return order;
     }
 
-    private void validateOrderOwner(Order order, Long userId) throws OrderAccessDeniedException {
-        if (order.getUserId() != userId) {
-            log.warn("User {} can not see the order {}", userId, order.getId());
-            throw new OrderAccessDeniedException("You are only allowed to access your own orders");
+    private void applyPatchToOrderItem(Order order, OrderItemPatchDto orderItemPatchDto) {
+        OrderItem existingItem = order.getOrderItems().stream()
+                .filter(orderItem ->
+                        orderItem.getItem().getId() == orderItemPatchDto.getItemId())
+                .findFirst().orElse(null);
+        if (orderItemPatchDto.isDeleted()) {
+            order.getOrderItems().remove(existingItem);
+        } else if (orderItemPatchDto.getQuantity() != null) {
+            if (existingItem == null) {
+                Item newItem = itemRepository.findById(orderItemPatchDto.getItemId()).orElseThrow(() ->
+                        new ItemNotFoundException("Item with id " + orderItemPatchDto.getItemId() +
+                                " was not found"));
+
+                OrderItem orderItem = OrderItem.builder()
+                        .quantity(orderItemPatchDto.getQuantity())
+                        .item(newItem)
+                        .order(order)
+                        .build();
+                order.getOrderItems().add(orderItem);
+            } else {
+                existingItem.setQuantity(orderItemPatchDto.getQuantity());
+            }
         }
     }
 

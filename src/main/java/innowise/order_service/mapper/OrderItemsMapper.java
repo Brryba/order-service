@@ -20,7 +20,6 @@ public interface OrderItemsMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "item", ignore = true)
     @Mapping(target = "order", ignore = true)
-    @Mapping(target = "quantity", source = "newQuantity")
     OrderItem toOrderItem(OrderItemPatchDto orderItemPatchDto);
 
     @Mapping(target = "itemId", source = "item.id")

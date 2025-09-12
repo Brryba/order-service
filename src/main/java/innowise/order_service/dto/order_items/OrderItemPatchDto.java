@@ -16,7 +16,7 @@ public class OrderItemPatchDto {
     private Long itemId;
 
     @Positive(message = "Quantity must be a positive number")
-    private Integer newQuantity;
+    private Integer quantity;
 
     private boolean isDeleted;
 }

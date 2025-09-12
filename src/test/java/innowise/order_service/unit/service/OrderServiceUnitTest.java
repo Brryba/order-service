@@ -23,6 +23,7 @@ import innowise.order_service.repository.OrderRepository;
 import innowise.order_service.service.OrderService;
 import innowise.order_service.service.UserServiceClient;
 import innowise.order_service.service.kafka.KafkaProducerService;
+import innowise.order_service.validator.OrderValidator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @SpringBootTest(classes = {OrderMapperImpl.class, OrderItemsMapperImpl.class, OrderService.class})
 class OrderServiceUnitTest {
+
+    @MockitoBean
+    private OrderValidator orderValidator;
 
     @MockitoBean
     private OrderRepository orderRepository;
