@@ -96,7 +96,7 @@ public class OrderService {
 
     public OrderPageResponseDto getAllUserOrders(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("creationDate").descending());
-        Page<Order> orderPage = orderRepository.findOrdersByUserId(userId, pageable);
+        Page<Order> orderPage = orderRepository.findOrdersByUserIdAndStatusNot(userId, pageable, OrderStatus.CREATING);
 
         if (orderPage.getContent().isEmpty()) {
             log.warn("Orders for user {} were not found in database on page {}", userId, page);

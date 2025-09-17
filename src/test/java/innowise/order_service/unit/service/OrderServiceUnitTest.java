@@ -256,7 +256,8 @@ class OrderServiceUnitTest {
 
     @Test
     void getAllUserOrders() {
-        when(orderRepository.findOrdersByUserId(eq(USER_ID), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(order)));
+        when(orderRepository.findOrdersByUserIdAndStatusNot(eq(USER_ID), any(Pageable.class), eq(OrderStatus.CREATING)))
+                .thenReturn(new PageImpl<>(List.of(order)));
         when(userServiceClient.getUserById(USER_ID)).thenReturn(userResponseDto);
 
         List<OrderResponseDto> result = orderService.getAllUserOrders(USER_ID, 0, 10).getOrders();
@@ -267,12 +268,13 @@ class OrderServiceUnitTest {
     @Test
     void getAllUserOrders_WhenOrdersNotFound_ShouldThrowOrderNotFoundException() {
         List<Long> orderIds = Arrays.asList(ORDER_ID, 2L);
-        when(orderRepository.findOrdersByUserId(eq(USER_ID), any(Pageable.class))).thenReturn(Page.empty());
+        when(orderRepository.findOrdersByUserIdAndStatusNot(eq(USER_ID), any(Pageable.class), eq(OrderStatus.CREATING)))
+        .thenReturn(Page.empty());
 
         assertThatThrownBy(() -> orderService.getAllUserOrders(USER_ID, 0, 10))
                 .isInstanceOf(OrderNotFoundException.class);
 
-        verify(orderRepository).findOrdersByUserId(eq(USER_ID), any(Pageable.class));
+        verify(orderRepository).findOrdersByUserIdAndStatusNot(eq(USER_ID), any(Pageable.class), eq(OrderStatus.CREATING));
     }
 
     @Test
